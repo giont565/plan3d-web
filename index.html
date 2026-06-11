@@ -86,7 +86,7 @@
     <span class="sep"></span>
     <div class="tool" id="layAxis" title="切換：左右並排 / 上下並排">⬌ 左右</div>
   </div>
-  <span class="sub" style="margin-left:14px">雲端版</span>
+  <span class="sub" style="margin-left:14px">網頁版</span>
 </header>
 <div class="wrap">
   <div class="left">
@@ -242,6 +242,7 @@ const FURN = {
   water:    {w:0.36,d:0.36,h:1.1,c:0xeef2f3, mat:'plaster',label:'飲水機'},
   credenza: {w:1.6,d:0.45,h:0.75,c:0xcdbfa6, mat:'wood',  label:'矮櫃'},
   column:   {w:0.6,d:0.6,h:2.8, c:0xcfccc4, mat:'plaster',label:'柱'},        // 結構柱：3D 跟著牆高、像牆一樣頂到天花
+  schair:   {w:0.5,d:0.5,h:0.5, c:0x3a3d42, mat:'fabric', label:'椅'},        // 輕量椅(自動辨識批量用·3 零件不卡 3D·對稱無朝向)
   // 普立美型錄參考款（2026-06-11）
   gpart:    {w:1.2,d:0.06,h:1.8, c:0xd7e4ea, mat:'metal', label:'玻璃隔屏'},   // 2.5cm玻璃隔間系列：鋁框+霧玻
   dscreen:  {w:1.2,d:0.03,h:1.15,c:0x9aa4b0, mat:'fabric',label:'桌上屏風'},   // 工作站桌上型布屏(夾桌面)
@@ -253,8 +254,8 @@ function effFurn(f){ const B=FURN[f.type]; if(!B) return null;   // 每件家具
 // 2D 俯視輪廓：依家具型別在已 translate+rotate 的 local 座標建 path（呼叫端統一 fill+stroke），與右側 3D 造型對齊；回傳 label 錨點
 function furnPath2D(ctx,f,F){ const P=view.ppm, hw=Math.max(1,F.w*P/2), hd=Math.max(1,F.d*P/2); ctx.beginPath();  // 半尺寸夾正：防負/零尺寸令 arc 拋例外、L 形自交
   const arm=m=>Math.min(Math.max(m*P,2), Math.min(hw,hd)*1.5);   // 臂厚 px：固定公尺(與 3D 同)，夾在 [2, 短半徑×1.5] 恆正且不吃掉整塊
-  if(f.type==='round'||f.type==='stool'||f.type==='ochair'||f.type==='gchair'||f.type==='plant'){
-    ctx.arc(0,0,Math.min(hw,hd),0,Math.PI*2); return {x:0,y:0}; }            // 圓桌/圓凳/辦公椅/盆栽＝圓
+  if(f.type==='round'||f.type==='stool'||f.type==='ochair'||f.type==='gchair'||f.type==='plant'||f.type==='schair'){
+    ctx.arc(0,0,Math.min(hw,hd),0,Math.PI*2); return {x:0,y:0}; }            // 圓桌/圓凳/辦公椅/輕量椅/盆栽＝圓
   if(f.type==='etable'){ ctx.ellipse(0,0,hw,hd,0,0,Math.PI*2); return {x:0,y:0}; }   // 橢圓會議桌＝橢圓
   if(f.type==='ldesk'){ const a=arm(0.72);                                   // L型辦公桌：缺右下角(後緣橫臂＋左緣縱臂)
     ctx.moveTo(-hw,-hd);ctx.lineTo(hw,-hd);ctx.lineTo(hw,-hd+a);ctx.lineTo(-hw+a,-hd+a);ctx.lineTo(-hw+a,hd);ctx.lineTo(-hw,hd);ctx.closePath();
@@ -925,10 +926,11 @@ async function autoFurn(){   // 自動認工位家具：同 autoTrace 的裁切/
     pushHistory();
     r.desks.forEach(d=>{ plan.furn.push({type:'desk', x:ox+(cx0+d[0])*sx, y:oy+(cy0+d[1])*sx, w:d[2], d:d[3], rot:d[4]*Math.PI/180}); });
     (r.cols||[]).forEach(c=>{ plan.furn.push({type:'column', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx, w:c[2], d:c[3]}); });
+    (r.chairs||[]).forEach(c=>{ plan.furn.push({type:'schair', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx}); });
     underlay.opacity=Math.min(underlay.opacity,0.3);
     const opEl=document.getElementById('ulOpacity'); if(opEl) opEl.value=underlay.opacity;
     rebuildFurn(); render2d();
-    document.getElementById('hint').textContent='自動認出 '+r.banks+' 組工位帶、放了 '+r.desks.length+' 張桌'+((r.cols&&r.cols.length)?('、'+r.cols.length+' 根柱'):'')+(cropRect?'（只認框內）':'')+'。柱只抓得到高把握的、漏的用家具「柱」點放補；圓桌/沙發請手動放。Ctrl+Z 復原';
+    document.getElementById('hint').textContent='自動認出 '+r.desks.length+' 張桌'+((r.chairs&&r.chairs.length)?('、'+r.chairs.length+' 張椅'):'')+((r.cols&&r.cols.length)?('、'+r.cols.length+' 根柱'):'')+(cropRect?'（只認框內）':'')+(r.lowres?'。⚠️ 底圖解析度偏低、精度受限，建議重新匯入 PDF（新版轉圖更清晰）':'。誤認的用框選刪、漏的點放補，Ctrl+Z 復原');
   }catch(e){ alert('自動家具失敗：'+e.message); }
   btn.textContent=old; btn.style.opacity=1;
 }
@@ -1133,6 +1135,10 @@ function buildPiece(f){ const F=effFurn(f); const g=new THREE.Group(); const woo
     if(f.board){ const bd=furnMat(0xc7a675,'wood');                                                         // 帶 board 標記的屏風(目前只秘書)頂端放橢圓桌板
       const board=cyl(0.5,0.5,0.032,bd,28); board.scale.set(0.62,1,0.34); board.position.y=F.h+0.024; g.add(board);   // 橢圓桌板(照平面圖比例 ~0.62×0.34)
       const bedge=cyl(0.5,0.5,0.012,frame,28); bedge.scale.set(0.62,1,0.34); bedge.position.y=F.h+0.004; g.add(bedge); } } // 桌板下緣框
+  else if(f.type==='schair'){ const fab=furnMat(F.c,'fabric'), met=furnMat(0x4a4d52,'metal');          // 輕量椅：座墊+氣壓柱+底盤(3 零件、幾百張不卡)
+    const seat=cyl(F.w*0.42,F.w*0.42,0.08,fab,14); seat.position.y=0.46; g.add(seat);
+    const post=cyl(0.03,0.045,0.36,met,10); post.position.y=0.26; g.add(post);
+    const base=cyl(F.w*0.36,F.w*0.36,0.04,met,12); base.position.y=0.04; g.add(base); }
   else if(f.type==='column'){ const con=furnMat(F.c,'plaster');                                        // 結構柱：高度跟牆走(像牆面的建築元件)、柱腳柱帽微凸
     const ch=(f.h!=null)?F.h:(plan.wallH||2.8);
     const shaft=box(F.w,ch,F.d,con); shaft.position.y=ch/2; g.add(shaft);
