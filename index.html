@@ -156,6 +156,7 @@
       <label class="fld" style="cursor:pointer"><input type="checkbox" id="ulPlaus" checked> 濾假牆(合理性)</label>
       <div class="tool pin" id="ulAuto" style="border-color:var(--gold);color:var(--gold);font-weight:700">⚙ 自動描牆</div>
       <div class="tool pin" id="ulFurn" style="border-color:var(--gold);color:var(--gold);font-weight:700" title="自動認出平面圖上的工位桌組並放成家具（要先校正比例）">⚙ 自動家具</div>
+      <div class="tool" id="ulGt" title="把你修正後的桌/椅/柱存成訓練標注（修正即標注），並給機器這次的辨識打分">回饋標注</div>
       <div class="tool" id="ulClear">清除底圖</div>
     </div>
     <div id="cwrap"><canvas id="c2d"></canvas>
@@ -927,6 +928,10 @@ async function autoFurn(){   // 自動認工位家具：同 autoTrace 的裁切/
     r.desks.forEach(d=>{ plan.furn.push({type:'desk', x:ox+(cx0+d[0])*sx, y:oy+(cy0+d[1])*sx, w:d[2], d:d[3], rot:d[4]*Math.PI/180}); });
     (r.cols||[]).forEach(c=>{ plan.furn.push({type:'column', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx, w:c[2], d:c[3]}); });
     (r.chairs||[]).forEach(c=>{ plan.furn.push({type:'schair', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx}); });
+    window.__lastDetect={ mpp:sx,   // 機器原始輸出(世界座標·公尺尺寸)→「回饋標注」時跟修正後真值比對打分
+      desk:r.desks.map(d=>({x:ox+(cx0+d[0])*sx, y:oy+(cy0+d[1])*sx, w:d[2], h:d[3]})),
+      chair:(r.chairs||[]).map(c=>({x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx, w:0.5, h:0.5})),
+      structural_column:(r.cols||[]).map(c=>({x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx, w:c[2], h:c[3]})) };
     underlay.opacity=Math.min(underlay.opacity,0.3);
     const opEl=document.getElementById('ulOpacity'); if(opEl) opEl.value=underlay.opacity;
     rebuildFurn(); render2d();
@@ -934,6 +939,44 @@ async function autoFurn(){   // 自動認工位家具：同 autoTrace 的裁切/
   }catch(e){ alert('自動家具失敗：'+e.message); }
   btn.textContent=old; btn.style.opacity=1;
 }
+async function saveGt(force){   // 修正即標注：目前圖上的桌/椅/柱=修正後真值 → 連同底圖+機器原始輸出存標注檔、回辨識分數
+  if(!underlay){ alert('先匯入底圖'); return; }
+  if(!underlay.calib){ alert('底圖還沒校正比例，標注存了尺寸也不對——先「校正比例」再回饋'); return; }
+  const sx=underlay.scale, ox=underlay.x, oy=underlay.y;
+  const im=underlay.img, iw=im.naturalWidth||im.width, ih=im.naturalHeight||im.height;
+  const box=(f,F)=>{ const hor=Math.abs(Math.cos(f.rot||0))>0.7; const sw=hor?F.w:F.d, sd=hor?F.d:F.w;
+    const cx=(f.x-ox)/sx, cy=(f.y-oy)/sx, pw=sw/sx, ph=sd/sx;
+    return {x:Math.round(cx-pw/2), y:Math.round(cy-ph/2), w:Math.round(pw), h:Math.round(ph), cx:Math.round(cx), cy:Math.round(cy)}; };
+  const CH=new Set(['schair','ochair','gchair','stool']);
+  const gt={desk:[],chair:[],structural_column:[]};
+  plan.furn.forEach(f=>{ const F=effFurn(f); if(!F)return;
+    const cx=(f.x-ox)/sx, cy=(f.y-oy)/sx; if(cx<0||cy<0||cx>iw||cy>ih) return;   // 底圖外不收
+    if(f.type==='desk') gt.desk.push(box(f,F));
+    else if(CH.has(f.type)) gt.chair.push(box(f,F));
+    else if(f.type==='column') gt.structural_column.push(box(f,F)); });
+  const n=gt.desk.length+gt.chair.length+gt.structural_column.length;
+  if(!n){ alert('圖上沒有桌/椅/柱可回饋'); return; }
+  if(!force && !confirm('把目前的 桌'+gt.desk.length+'／椅'+gt.chair.length+'／柱'+gt.structural_column.length+' 當「修正後正確答案」存成訓練標注？\n\n（存之前請確認：誤判已刪、漏抓已補。資料存在本機 gt_feedback 資料夾）')) return;
+  const btn=document.getElementById('ulGt'); const old=btn.textContent; btn.textContent='存檔中…'; btn.style.opacity=.6;
+  try{
+    const cv=document.createElement('canvas'); cv.width=iw; cv.height=ih; cv.getContext('2d').drawImage(im,0,0);
+    const b64=cv.toDataURL('image/png').split(',')[1];
+    const machine={};
+    if(window.__lastDetect){ for(const k of ['desk','chair','structural_column']){
+      machine[k]=(window.__lastDetect[k]||[]).map(o=>{ const cx=(o.x-ox)/sx, cy=(o.y-oy)/sx, pw=o.w/sx, ph=o.h/sx;
+        return {x:Math.round(cx-pw/2), y:Math.round(cy-ph/2), w:Math.round(pw), h:Math.round(ph), cx:Math.round(cx), cy:Math.round(cy)}; }); } }
+    const r=await fetch('/api/save_gt',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({image_b64:b64, mpp:sx, gt, machine})}).then(x=>x.json());
+    if(r.error) throw new Error(r.error);
+    let s='已存標注 '+r.saved+'（桌'+r.counts.desk+'/椅'+r.counts.chair+'/柱'+r.counts.structural_column+'）';
+    if(r.score&&Object.keys(r.score).length){ const nm={desk:'桌',chair:'椅',structural_column:'柱'};
+      s+='。機器這次：'+Object.entries(r.score).map(([k,v])=>nm[k]+'精確'+Math.round(v.P*100)+'%/找全'+Math.round(v.R*100)+'%').join('、'); }
+    document.getElementById('hint').textContent=s+'。標注累積夠多就能拿去訓練辨識';
+    return r;
+  }catch(e){ alert('回饋標注失敗：'+e.message); }
+  finally{ btn.textContent=old; btn.style.opacity=1; }
+}
+document.getElementById('ulGt').onclick=()=>saveGt(false);
 function doCalib(){ const [p1,p2]=ulCalib.pts; const d=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]);
   const R=parseFloat(prompt('這兩點實際距離是幾公尺？', d.toFixed(2))); ulCalib=null;
   if(R>0&&d>1e-4){ const f=R/d; underlay.base*=f; underlay.scale*=f; underlay.calib=true;
@@ -1349,6 +1392,7 @@ window.__dbg={ plan:()=>plan, size:(w,h)=>{c2d.width=w;c2d.height=h;fitted=false
     res({set:!!underlay,w:im.width,h:im.height,scale:underlay.scale,opacity:underlay.opacity}); }; im.onerror=()=>res({err:'load'}); im.src=url; }),
   ulInfo:()=>underlay?{x:underlay.x,y:underlay.y,scale:underlay.scale,opacity:underlay.opacity}:null,
   ulSet:(o)=>{ if(!underlay) return null; Object.assign(underlay,o); render2d(); return {x:underlay.x,y:underlay.y,scale:underlay.scale}; },
+  gtTest:()=>saveGt(true),
   furnTest:()=>autoFurn(),
   rooms:()=>{ const A=analyzeRooms(); return A?{n:A.rooms.length,rooms:A.rooms.map((r,i)=>({i,area:+r.area.toFixed(2),doors:r.doors,reach:r.reach})),edges:A.edges.map(e=>[e.a,e.b])}:null; },
   light:()=>{ const A=computeLight(); return A?A.rooms.map((r,i)=>({i,lux:r.lux})):null; },
