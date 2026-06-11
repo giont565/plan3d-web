@@ -831,18 +831,19 @@ async function pdfToImage(f){   // 有後端＝伺服器端 PyMuPDF 轉圖（封
   const r=await fetch('/api/pdf2img',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data_b64:b64})});
   const j=await r.json(); if(j.error) throw new Error(j.error);
   const img=new Image(); await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src='data:image/png;base64,'+j.png_b64;}); return img; }
-async function pdfToImageClient(f){   // 網頁版（無後端）：pdf.js 3.x 經典版（4.x 是 ESM 不能 script 標籤直載）；⚠️無頭 preview 的 worker 必卡、只能真瀏覽器驗
+async function pdfToImageClient(f){   // 網頁版（無後端）：pdf.js 3.x 經典版（4.x 是 ESM 不能 script 標籤直載）
   const h=document.getElementById('hint'); if(h)h.textContent='底圖載入中…（網頁版直接在瀏覽器裡轉 PDF，大張的圖要十幾秒）';
   if(!window.pdfjsLib){ await new Promise((res,rej)=>{ const s=document.createElement('script');
       s.src='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
       s.onload=res; s.onerror=()=>rej(new Error('轉檔元件載入失敗（網路不通？），可改用截圖以圖片匯入')); document.head.appendChild(s); });
-    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'; }
+    const wr=await fetch('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js');   // worker 不能跨網域直開（瀏覽器安全限制、且默默卡住不報錯）
+    pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(await wr.blob()); }                      // → 抓回來轉 blob＝本站血統
   const doc=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
   const page=await doc.getPage(1), vp1=page.getViewport({scale:1});
   let sc=3; const mx=Math.max(vp1.width,vp1.height); if(mx*sc>4096) sc=4096/mx;   // 對齊後端 zoom 3、封頂 4096px 防手機爆記憶體
   const vp=page.getViewport({scale:sc});
   const cv=document.createElement('canvas'); cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
-  await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+  await page.render({canvasContext:cv.getContext('2d'),viewport:vp,intent:'print'}).promise;   // intent:'print'＝不等畫面節拍；預設模式在背景分頁/無頭環境 RAF 不跳會永久卡住
   const img=new Image(); await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=cv.toDataURL('image/png');}); return img; }
 function setUnderlay(img){ const base=8/img.width;   // 預設讓底圖約 8m 寬（⚠️ 不是真實比例，要靠校正）
   underlay={img,x:0,y:0,scale:base,base,opacity:0.45,calib:false};   // calib=比例已校正過(校正比例/設牆長校正/還原記憶)
