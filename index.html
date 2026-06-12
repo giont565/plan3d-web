@@ -574,6 +574,7 @@ let ulMode=false, ulCalib=null, cropMode=false, cropRect=null, cropDrag=false;
 let mouseW=null, fitted=false;
 let selWalls=new Set(), selDrag=null;   // 框選/點選要刪的牆
 let seatDrag=null;                      // 排座：框選要自動鋪工位的區域
+let furnClip=null;                      // Ctrl+C 家具剪貼簿（相對群中心的偏移）
 
 function resize2d(){ c2d.width=cwrap.clientWidth; c2d.height=cwrap.clientHeight;
   if(!fitted&&c2d.width>50){ fit2d(); fitted=true; } render2d(); }
@@ -768,7 +769,19 @@ window.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); if(e.shiftKey) redo(); else undo(); return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='y'||e.key==='Y')){ e.preventDefault(); redo(); return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='d'||e.key==='D')){ e.preventDefault();
-    if(selFurn.size){ pushHistory(); const ns=new Set(); [...selFurn].forEach(i=>{ const f=plan.furn[i]; if(!f) return; plan.furn.push({type:f.type,x:f.x+0.6,y:f.y+0.6,rot:f.rot||0}); ns.add(plan.furn.length-1); }); selFurn=ns; rebuildFurn(); } return; }
+    if(selFurn.size){ pushHistory(); const ns=new Set(); [...selFurn].forEach(i=>{ const f=plan.furn[i]; if(!f) return; plan.furn.push({...f, x:f.x+0.6, y:f.y+0.6}); ns.add(plan.furn.length-1); }); selFurn=ns; rebuildFurn(); } return; }
+  if((e.ctrlKey||e.metaKey)&&(e.key==='c'||e.key==='C')){ if(typing) return;   // 輸入框內保留原生複製
+    if(selFurn.size){ e.preventDefault();
+      const items=[...selFurn].map(i=>plan.furn[i]).filter(Boolean);
+      const cx=items.reduce((a,f)=>a+f.x,0)/items.length, cy=items.reduce((a,f)=>a+f.y,0)/items.length;
+      furnClip=items.map(f=>({...f, dx:f.x-cx, dy:f.y-cy}));
+      document.getElementById('hint').textContent='已複製 '+items.length+' 件家具：滑鼠移到目標位置按 Ctrl+V 貼上（可連蓋多次）'; } return; }
+  if((e.ctrlKey||e.metaKey)&&(e.key==='v'||e.key==='V')){ if(typing) return;   // 輸入框內保留原生貼上
+    if(furnClip&&furnClip.length&&mouseW){ e.preventDefault();
+      pushHistory(); const ns=new Set();
+      furnClip.forEach(c=>{ const nf={...c}; delete nf.dx; delete nf.dy; nf.x=snap(mouseW[0]+c.dx); nf.y=snap(mouseW[1]+c.dy); plan.furn.push(nf); ns.add(plan.furn.length-1); });
+      selFurn=ns; rebuildFurn(); render2d();
+      document.getElementById('hint').textContent='已貼上 '+furnClip.length+' 件（移動滑鼠再 Ctrl+V 連蓋）'; } return; }
   if(typing) return;
   if((e.key==='r'||e.key==='R')&&selFurn.size){ pushHistory(); selFurn.forEach(i=>{ if(plan.furn[i]) plan.furn[i].rot=((plan.furn[i].rot||0)+Math.PI/2)%(Math.PI*2); }); rebuildFurn(); }
   if(e.key==='Delete'||e.key==='Backspace'){ if(selWalls.size){e.preventDefault();delSelWalls();} else if(selFurn.size){e.preventDefault();pushHistory();[...selFurn].sort((a,b)=>b-a).forEach(i=>plan.furn.splice(i,1));selFurn.clear();rebuildFurn();} }
@@ -783,7 +796,7 @@ document.querySelectorAll('.tool[data-tool]').forEach(t=>t.onclick=()=>{ tool=t.
   document.querySelectorAll('.tool[data-tool]').forEach(x=>x.classList.toggle('sel',x===t));
   const H={wall:'牆：點起點→點終點（按住 Shift＝直角鎖、畫筆直橫/直牆；會接續，Esc 結束）',door:'門：點在某面牆上加門洞',window:'窗：點在某面牆上加窗',
     rail:'欄杆：點起點→點終點，畫出矮欄杆（開放陽台/露台邊用）',
-    furn:'家具：選種類點一下放上去（數字 1~9 切工具）',move:'選取/移動：點或框選家具(可多選)→拖曳移動、R 轉向、Ctrl+D 複製貼上、Delete 刪除',erase:'刪除：點牆/門窗/家具移除',
+    furn:'家具：選種類點一下放上去（數字 1~9 切工具）',move:'選取/移動：點或框選家具(可多選)→拖曳移動、R 轉向、Ctrl+C 複製→滑鼠移到位 Ctrl+V 蓋章(可連蓋)、Ctrl+D 原地複製、Delete 刪除',erase:'刪除：點牆/門窗/家具移除',
     selwall:'框選刪牆：拖一個框選取要刪的牆（變紅），或點單一面牆，再按 Delete 刪除',setlen:'設牆長校正：點一面牆，輸入它的真實長度（公尺），整張圖等比例縮放',
     tmpl:'模板：選一種標準配置點一下放上去（工程師＝家具組；副理/秘書/部經＝含牆+門整間），放完已全選可整組拖動微調',
     seatfill:'排座：拖一個矩形區域→自動排滿工位（模板用旁邊下拉的單座/雙座、自動轉 4 個朝向選座位最多）、避開既有牆和家具；走道寬用「走道」欄調，Ctrl+Z 復原'};
