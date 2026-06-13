@@ -176,6 +176,9 @@
           <label>色<input id="fpColor" type="color"></label>
           <label>角度<input id="fpRot" type="number" step="5" min="0" max="360"> °</label>
           <div class="tool" id="fpReset">重設</div>
+          <span class="lsep"></span>
+          <div class="tool" id="fpFlipH" title="水平翻轉(左右鏡像)">⇋ 水平翻</div>
+          <div class="tool" id="fpFlipV" title="垂直翻轉(上下鏡像)">⇅ 垂直翻</div>
         </span>
         <span id="fpGroup" style="display:none;align-items:center;gap:6px">
           <span class="lsep"></span><b style="color:var(--gold)">整組</b>
@@ -187,6 +190,9 @@
           <div class="tool" id="gpUp" title="整組放大 10%">＋</div>
           <label>倍<input id="gpScaleN" type="number" step="0.05" min="0.1" value="1.1" style="width:42px"></label>
           <div class="tool" id="gpScaleGo">縮放</div>
+          <span class="lsep"></span>
+          <div class="tool" id="gpFlipH" title="整組水平翻轉">⇋ 水平翻</div>
+          <div class="tool" id="gpFlipV" title="整組垂直翻轉">⇅ 垂直翻</div>
         </span>
       </div>
       <div id="scenPanel" style="display:none">
@@ -618,6 +624,12 @@ function applyGroupScale(f,cx,cy){ if(!(f>0))return;
   selWalls.forEach(i=>{const w=plan.walls[i]; if(w){w.x1=cx+(w.x1-cx)*f;w.y1=cy+(w.y1-cy)*f;w.x2=cx+(w.x2-cx)*f;w.y2=cy+(w.y2-cy)*f;}}); }
 function groupRotateDeg(deg){ const c=selCentroid(); if(!c)return; pushHistory(); applyGroupRotate(deg*Math.PI/180,c[0],c[1]); (selWalls.size?rebuild():rebuildFurn()); render2d(); }
 function groupScaleFac(f){ const c=selCentroid(); if(!c||!(f>0))return; pushHistory(); applyGroupScale(f,c[0],c[1]); (selWalls.size?rebuild():rebuildFurn()); render2d(); }
+function groupFlip(axis){ const c=selCentroid(); if(!c)return; pushHistory(); const cx=c[0],cy=c[1];   // 整組鏡像翻轉：位置繞中心鏡射+角度反射+每件 mirror 旗標切換(L桌/D桌等不對稱才真翻面)
+  selFurn.forEach(i=>{ const f=plan.furn[i]; if(!f)return;
+    if(axis==='h'){ f.x=2*cx-f.x; f.rot=-(f.rot||0); } else { f.y=2*cy-f.y; f.rot=Math.PI-(f.rot||0); }
+    f.mirror=!f.mirror; });
+  selWalls.forEach(i=>{ const w=plan.walls[i]; if(!w)return; if(axis==='h'){ w.x1=2*cx-w.x1; w.x2=2*cx-w.x2; } else { w.y1=2*cy-w.y1; w.y2=2*cy-w.y2; } });
+  (selWalls.size?rebuild():rebuildFurn()); render2d(); }
 function startGroupDrag(x,y){ pushHistory(); drag={kind:'furn',sx:x,sy:y,
   items:[...selFurn].map(i=>({i,ox:plan.furn[i].x,oy:plan.furn[i].y})),
   walls:[...selWalls].map(i=>({i,ax:plan.walls[i].x1,ay:plan.walls[i].y1,bx:plan.walls[i].x2,by:plan.walls[i].y2}))}; }
@@ -663,10 +675,10 @@ function render2d(){ const w=c2d.width,h=c2d.height; ctx.clearRect(0,0,w,h);
     ctx.save();ctx.globalAlpha=furnLocked(f)?0.3:1;ctx.translate(px,py);ctx.rotate(f.rot||0);
     ctx.fillStyle='#'+F.c.toString(16).padStart(6,'0')+'cc';
     ctx.strokeStyle=selFurn.has(i)?'#c9a35b':'#00000066'; ctx.lineWidth=selFurn.has(i)?3:1.5; ctx.lineJoin='round';
-    const lp=furnPath2D(ctx,f,F); ctx.fill(); ctx.stroke();
-    if(showLabels){ctx.font='600 10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-      const tw=ctx.measureText(F.label).width; ctx.fillStyle='rgba(26,28,32,0.7)'; ctx.beginPath(); ctx.roundRect(lp.x-tw/2-4,lp.y-8,tw+8,16,5); ctx.fill();
-      ctx.fillStyle='#e9edf1'; ctx.fillText(F.label,lp.x,lp.y);} ctx.restore(); });
+    ctx.save(); if(f.mirror) ctx.scale(-1,1); const lp=furnPath2D(ctx,f,F); ctx.fill(); ctx.stroke(); ctx.restore();
+    if(showLabels){ const lx=f.mirror?-lp.x:lp.x; ctx.font='600 10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      const tw=ctx.measureText(F.label).width; ctx.fillStyle='rgba(26,28,32,0.7)'; ctx.beginPath(); ctx.roundRect(lx-tw/2-4,lp.y-8,tw+8,16,5); ctx.fill();
+      ctx.fillStyle='#e9edf1'; ctx.fillText(F.label,lx,lp.y);} ctx.restore(); });
   if(showRooms&&plan.walls.length&&!anDirty&&anCache&&anCache.rooms.length){ const A=anCache;   // 房間連通圖（快取必須新鮮，防清空後畫到舊房間）
     ctx.lineWidth=2;
     for(const e of A.edges){ const [dx,dy]=W2S(e.x,e.y);
@@ -896,6 +908,8 @@ window.addEventListener('keydown',e=>{
       document.getElementById('hint').textContent='已貼上 '+fn+' 件家具'+(wn?('＋'+wn+' 道牆/柱'):'')+'（移動滑鼠再 Ctrl+V 連蓋）'; } return; }
   if(typing) return;
   if((e.key==='r'||e.key==='R')&&selCount()){ groupRotateDeg(90); }   // R＝整組繞中心轉 90°（單件＝原地轉）
+  if((e.key==='h'||e.key==='H')&&selCount()){ groupFlip('h'); }   // H＝水平翻轉
+  if((e.key==='v'||e.key==='V')&&selCount()&&!(e.ctrlKey||e.metaKey)){ groupFlip('v'); }   // V＝垂直翻轉(Ctrl+V 已在上面攔截)
   if(e.key==='Delete'||e.key==='Backspace'){ if(selWalls.size){e.preventDefault();delSelWalls();} else if(selFurn.size){e.preventDefault();pushHistory();[...selFurn].sort((a,b)=>b-a).forEach(i=>plan.furn.splice(i,1));selFurn.clear();rebuildFurn();} }
   if(e.key==='f'||e.key==='F'){ fitted=false; fit2d(); fitted=true; render2d(); }
   if(TOOLKEYS[e.key]){ const b=document.querySelector('.tool[data-tool="'+TOOLKEYS[e.key]+'"]'); if(b) b.click(); }
@@ -1378,7 +1392,7 @@ function buildPiece(f){ const F=effFurn(f); const g=new THREE.Group(); const woo
       const ft=box(0.5,0.04,0.14,met); ft.position.set(s*F.w*0.25,0.02,0); g.add(ft); }); }                       // 柱腳底橫條
   else { const b=box(F.w,F.h,F.d,furnMat(F.c,F.mat));b.position.y=F.h/2;g.add(b);
     if(f.type==='fridge'){const hd=box(0.04,0.6,0.04,furnMat(0x888888,'metal'));hd.position.set(F.w/2-0.06,F.h*0.5,F.d/2);g.add(hd);} }
-  g.position.set(f.x,0,f.y); g.rotation.y=-(f.rot||0); return g; }
+  g.position.set(f.x,0,f.y); g.rotation.y=-(f.rot||0); if(f.mirror) g.scale.x=-1; return g; }
 function buildFurn(g){ plan.furn.forEach(f=>{ const F=effFurn(f); if(!F)return; g.add(buildPiece(f));
   if(showLabels){ const lb=makeLabel(F.label); lb.position.set(f.x,F.h+0.35,f.y); g.add(lb); } });
   addScreenCorners(g); }
@@ -1447,6 +1461,10 @@ function updateFurnProp(){ const p=document.getElementById('furnProp'); if(!p) r
 { const b=document.getElementById('gpUp'); if(b) b.onclick=()=>groupScaleFac(1.1); }
 { const b=document.getElementById('gpDn'); if(b) b.onclick=()=>groupScaleFac(1/1.1); }
 { const b=document.getElementById('gpScaleGo'); if(b) b.onclick=()=>{ const f=parseFloat(document.getElementById('gpScaleN').value); if(f>0) groupScaleFac(f); }; }
+{ const b=document.getElementById('fpFlipH'); if(b) b.onclick=()=>groupFlip('h'); }
+{ const b=document.getElementById('fpFlipV'); if(b) b.onclick=()=>groupFlip('v'); }
+{ const b=document.getElementById('gpFlipH'); if(b) b.onclick=()=>groupFlip('h'); }
+{ const b=document.getElementById('gpFlipV'); if(b) b.onclick=()=>groupFlip('v'); }
 
 document.getElementById('view3d').onclick=()=>{ setWalk(false); const b=lastBounds(); const s=Math.max(b.span,6);
   cam.position.set(b.cx - s*0.15, s*0.85, b.cz + s*1.05); orbit.target.set(b.cx,0.4,b.cz); orbit.update(); markView('view3d'); };
@@ -1579,7 +1597,7 @@ window.__dbg={ plan:()=>plan, size:(w,h)=>{c2d.width=w;c2d.height=h;fitted=false
   backendSet:(v)=>{ _pdfBackend=v; return _pdfBackend; }, backendGet:async()=>await pdfBackendAlive(),
   setLayer:(L)=>{ activeLayer=L; const b=document.querySelector('.tool[data-layer="'+L+'"]'); if(b)b.click(); return activeLayer; },
   selWallSet:(arr)=>{ selWalls=new Set(arr); render2d(); return [...selWalls]; },
-  groupRotate:(d)=>groupRotateDeg(d), groupScale:(f)=>groupScaleFac(f), selCentroid:()=>selCentroid(), selBBox:()=>selBBox(), selCount:()=>selFurn.size+selWalls.size,
+  groupRotate:(d)=>groupRotateDeg(d), groupScale:(f)=>groupScaleFac(f), groupFlip:(a)=>groupFlip(a), selCentroid:()=>selCentroid(), selBBox:()=>selBBox(), selCount:()=>selFurn.size+selWalls.size,
   handles:()=>editHandles.map(h=>({kind:h.kind,sx:Math.round(h.sx),sy:Math.round(h.sy)})),
   editDragStart:(kind,i,end)=>{ editDrag=(kind==='resize')?{kind:'resize',i}:{kind:'wallpt',i,end}; return editDrag; },
   furnAt:(x,y)=>furnAt(x,y), clip:()=>furnClip,
