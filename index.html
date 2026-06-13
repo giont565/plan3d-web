@@ -1042,10 +1042,15 @@ async function autoTrace(){
     pushHistory();
     plan.walls=r.walls.map(s=>({x1:ox+(cx0+s[0])*sx,y1:oy+(cy0+s[1])*sx,x2:ox+(cx0+s[2])*sx,y2:oy+(cy0+s[3])*sx}));
     plan.openings=r.openings.map(o=>({x:ox+(cx0+o[0])*sx,y:oy+(cy0+o[1])*sx,type:o[2]}));
+    plan.furn=plan.furn.filter(f=>f.type!=='screen'||!f._auto);   // 重描時清掉上次自動屏風(避免疊加)
+    let nScr=0;
+    (r.partitions||[]).forEach(sg=>{ const x1=ox+(cx0+sg[0])*sx,y1=oy+(cy0+sg[1])*sx,x2=ox+(cx0+sg[2])*sx,y2=oy+(cy0+sg[3])*sx;
+      const len=Math.hypot(x2-x1,y2-y1); if(len<0.5) return;                 // 太短的屏風略過
+      plan.furn.push({type:'screen', x:(x1+x2)/2, y:(y1+y2)/2, w:+len.toFixed(2), d:0.05, rot:Math.atan2(y2-y1,x2-x1), _auto:1}); nScr++; });   // 屏風線→屏風家具
     underlay.opacity=Math.min(underlay.opacity,0.3);
     const opEl=document.getElementById('ulOpacity'); if(opEl) opEl.value=underlay.opacity;
     clearSel(); rebuild();
-    document.getElementById('hint').textContent='自動描出 '+plan.walls.length+' 道牆、'+plan.openings.length+' 門'+(cropRect?'（只描框內）':'')+'（簡化×'+lf.toFixed(1)+'）'+(plaus?'（已濾假牆）':'')+(underlay.calib?'。太多就把「簡化」往右拉，剩下的用「框選刪牆」清':'。⚠️ 底圖未校正比例（本次用通用模式）：先「校正比例」再描會準很多、屏風過濾和自動家具也才能用');
+    document.getElementById('hint').textContent='自動描出 '+plan.walls.length+' 道牆、'+plan.openings.length+' 門'+(nScr?('、'+nScr+' 片屏風(已從牆分出來、擺成屏風家具)'):'')+(cropRect?'（只描框內）':'')+'（簡化×'+lf.toFixed(1)+'）'+(plaus?'（已濾假牆）':'')+(underlay.calib?'。太多就把「簡化」往右拉，剩下的用「框選刪牆」清':'。⚠️ 底圖未校正比例（本次用通用模式）：先「校正比例」再描會準很多');
   }catch(e){ alert('自動描牆失敗：'+e.message); }
   finally{ btn.textContent=old; btn.style.opacity=1; } }
 async function autoFurn(){   // 自動認工位家具：同 autoTrace 的裁切/座標換算，後端 /api/detect_furn
