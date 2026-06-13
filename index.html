@@ -800,7 +800,7 @@ window.addEventListener('mouseup',()=>{ if(editDrag){ if(editDrag.kind==='wallpt
 c2d.addEventListener('contextmenu',e=>e.preventDefault());
 c2d.addEventListener('dblclick',()=>{ fitted=false; fit2d(); fitted=true; render2d(); });   // 雙擊＝符合視窗
 c2d.addEventListener('wheel',e=>{ e.preventDefault(); const r=c2d.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
-  if(ulMode&&underlay){ const f=e.deltaY<0?1.07:1/1.07; const [wx,wy]=S2W(mx,my);
+  if(ulMode&&underlay&&!underlay.calib){ const f=e.deltaY<0?1.07:1/1.07; const [wx,wy]=S2W(mx,my);   // 只有「未校正」時滾輪才縮底圖；校正後滾輪＝縮放整個畫面(底圖隨牆一起縮、不脫鉤)
     underlay.scale*=f; underlay.base*=f; underlay.x=wx+(underlay.x-wx)*f; underlay.y=wy+(underlay.y-wy)*f;
     document.getElementById('ulScale').value=Math.max(0.15,Math.min(6,underlay.scale/(underlay.base/(parseFloat(document.getElementById('ulScale').value)||1))));
     render2d(); saveCalib(); return; }
@@ -1078,7 +1078,8 @@ function doCalib(){ const [p1,p2]=ulCalib.pts; const d=Math.hypot(p2[0]-p1[0],p2
   const R=parseFloat(prompt('這兩點實際距離是幾公尺？', d.toFixed(2))); ulCalib=null;
   if(R>0&&d>1e-4){ const f=R/d; underlay.base*=f; underlay.scale*=f; underlay.calib=true;
     underlay.x=p1[0]+(underlay.x-p1[0])*f; underlay.y=p1[1]+(underlay.y-p1[1])*f;
-    document.getElementById('hint').textContent='已校正比例＋已記住，下次匯入同一張底圖會自動套用位點與比例尺'; saveCalib(); } render2d(); }
+    setUl(false);   // 校正完關掉移動底圖模式→滾輪改成縮放畫面、不會再把底圖縮跑
+    document.getElementById('hint').textContent='已校正比例＋已記住。滾輪＝縮放畫面(底圖鎖住跟著一起縮)；要再調底圖位置按「移動底圖」'; saveCalib(); } render2d(); }
 
 function fit2d(){ if(c2d.width<50) return; const pts=[]; plan.walls.forEach(w=>{pts.push([w.x1,w.y1],[w.x2,w.y2]);}); plan.furn.forEach(f=>pts.push([f.x,f.y]));
   if(underlay&&underlay.img){ const uw=underlay.img.width*underlay.scale, uh=underlay.img.height*underlay.scale; pts.push([underlay.x,underlay.y],[underlay.x+uw,underlay.y+uh]); }
