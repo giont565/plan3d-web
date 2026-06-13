@@ -105,7 +105,7 @@
           <option value="ochair">辦公椅</option><option value="gchair">會客椅</option><option value="conf">會議桌</option>
           <option value="cabinet">檔案櫃</option><option value="rack">機櫃</option>
           <option value="printer">事務機</option><option value="screen">屏風</option>
-          <option value="gpart">玻璃隔屏</option><option value="dscreen">桌上屏風</option><option value="etable">橢圓會議桌</option>
+          <option value="gpart">玻璃隔屏</option><option value="dscreen">桌上屏風</option><option value="etable">橢圓會議桌</option><option value="wtable">靠牆會議桌</option>
           <option value="column">柱</option>
           <option value="sofa">沙發</option><option value="plant">盆栽</option>
           <option value="ldesk">L型辦公桌</option><option value="rdesk">回桌</option><option value="reception">接待櫃台</option>
@@ -268,6 +268,7 @@ const FURN = {
   gpart:    {w:1.2,d:0.06,h:1.8, c:0xd7e4ea, mat:'metal', label:'玻璃隔屏'},   // 2.5cm玻璃隔間系列：鋁框+霧玻
   dscreen:  {w:1.2,d:0.03,h:1.15,c:0x9aa4b0, mat:'fabric',label:'桌上屏風'},   // 工作站桌上型布屏(夾桌面)
   etable:   {w:2.0,d:1.0,h:0.74, c:0xc7a675, mat:'wood',  label:'橢圓會議桌'}, // 主管會議桌(橢圓/船形)
+  wtable:   {w:1.43,d:0.72,h:0.74,c:0xc7a675, mat:'wood', label:'靠牆會議桌'}, // 長方桌身+一端半圓(D形)·左2腳+右圓端中央柱(鐵灰)
 };
 const DOOR_W=0.9, WIN_W=1.2, WIN_SILL=0.9, WIN_HEAD=2.2;
 function effFurn(f){ const B=FURN[f.type]; if(!B) return null;   // 每件家具的尺寸/顏色覆寫（沒設就用預設）
@@ -278,6 +279,7 @@ function furnPath2D(ctx,f,F){ const P=view.ppm, hw=Math.max(1,F.w*P/2), hd=Math.
   if(f.type==='round'||f.type==='stool'||f.type==='ochair'||f.type==='gchair'||f.type==='plant'||f.type==='schair'){
     ctx.arc(0,0,Math.min(hw,hd),0,Math.PI*2); return {x:0,y:0}; }            // 圓桌/圓凳/辦公椅/輕量椅/盆栽＝圓
   if(f.type==='etable'){ ctx.ellipse(0,0,hw,hd,0,0,Math.PI*2); return {x:0,y:0}; }   // 橢圓會議桌＝橢圓
+  if(f.type==='wtable'){ ctx.moveTo(-hw,-hd); ctx.lineTo(hw-hd,-hd); ctx.arc(hw-hd,0,hd,-Math.PI/2,Math.PI/2); ctx.lineTo(-hw,hd); ctx.closePath(); return {x:-hd*0.3,y:0}; }   // 靠牆會議桌＝長方+右端半圓(D形)
   if(f.type==='ldesk'){ const a=arm(0.72);                                   // L型辦公桌：缺右下角(後緣橫臂＋左緣縱臂)
     ctx.moveTo(-hw,-hd);ctx.lineTo(hw,-hd);ctx.lineTo(hw,-hd+a);ctx.lineTo(-hw+a,-hd+a);ctx.lineTo(-hw+a,hd);ctx.lineTo(-hw,hd);ctx.closePath();
     return {x:0,y:-hd+a/2}; }
@@ -336,8 +338,7 @@ const TEMPLATES = {
     {type:'gchair',x:0.42,y:2.62,rot:-Math.PI/2},  // 會客椅 左下
     {type:'gchair',x:1.92,y:1.95,rot:Math.PI/2},   // 會客椅 右上(面西向會客桌)
     {type:'gchair',x:1.92,y:2.62,rot:Math.PI/2},   // 會客椅 右下
-    {type:'table',x:1.17,y:2.39,rot:0,w:0.72,d:1.08,h:0.74},  // 會客桌(貼下牆長方段)
-    {type:'round',x:1.17,y:1.86,rot:0,w:0.72,d:0.72} ] }      // 會客桌(北端半圓·與長方段拼成拱形)
+    {type:'wtable',x:1.17,y:2.18,rot:-Math.PI/2,w:1.5,d:0.72} ] }   // 靠牆會議桌(長方桌身貼下牆·半圓端朝北·左2腳+右圓端中央柱鐵灰)
 };
 function placeTemplate(bx,by){ const t=TEMPLATES[document.getElementById('tmplType').value]; if(!t) return;
   pushHistory(); const ox=bx-(t.w||0)/2, oy=by-(t.h||0)/2;   // 以點擊點為模板中心
@@ -1362,6 +1363,14 @@ function buildPiece(f){ const F=effFurn(f); const g=new THREE.Group(); const woo
     const main=box(F.w,F.h-y0-0.03,F.d,panel); main.position.y=(F.h+y0)/2; g.add(main);                           // 布面板(桌面以上)
     const top=box(F.w,0.03,F.d+0.01,met); top.position.y=F.h-0.015; g.add(top);                                   // 頂條
     [-1,1].forEach(s=>{ const cl=box(0.05,0.1,Math.max(0.05,F.d+0.05),met); cl.position.set(s*(F.w/2-0.08),y0-0.03,0); g.add(cl); }); } // 兩個桌面夾具
+  else if(f.type==='wtable'){ const wood=furnMat(F.c,'wood'), met=furnMat(0x4e5157,'metal');                       // 靠牆會議桌：長方桌身+一端半圓·左2腳+右圓端中央柱(全鐵灰)
+    const rectL=Math.max(0.1,F.w-F.d/2);
+    const top=box(rectL,0.06,F.d,wood); top.position.set(-F.d/4,F.h-0.03,0); g.add(top);                           // 長方桌板
+    const cap=cyl(F.d/2,F.d/2,0.06,wood,32); cap.position.set(F.w/2-F.d/2,F.h-0.03,0); g.add(cap);                 // 圓端半圓桌板
+    const lh=F.h-0.06;
+    [-1,1].forEach(z=>{ const lg=box(0.07,lh,0.07,met); lg.position.set(-F.w/2+0.1,lh/2,z*(F.d/2-0.1)); g.add(lg); });   // 左長方端 2 腳(鐵灰)
+    const col=cyl(0.06,0.07,lh,met,20); col.position.set(F.w/2-F.d/2,lh/2,0); g.add(col);                          // 右圓端中央柱(鐵灰)
+    const base=cyl(F.d*0.28,F.d*0.28,0.04,met,24); base.position.set(F.w/2-F.d/2,0.02,0); g.add(base); }            // 柱底圓盤
   else if(f.type==='etable'){ const wood=furnMat(F.c,'wood'), met=furnMat(0x9aa0a6,'metal');                      // 橢圓會議桌：橢圓桌板+雙柱腳(主管會議桌)
     const top=cyl(0.5,0.5,0.05,wood,36); top.scale.set(F.w,1,F.d); top.position.y=F.h-0.025; g.add(top);          // 橢圓桌板(半徑 w/2×d/2)
     const edge=cyl(0.5,0.5,0.018,met,36); edge.scale.set(F.w*0.99,1,F.d*0.99); edge.position.y=F.h-0.058; g.add(edge);  // 桌板下緣銀邊
