@@ -191,6 +191,11 @@
         <div class="tool" id="load">讀檔</div>
         <div class="tool" id="img">匯入底圖（圖片/PDF）</div>
       </div></div>
+      <div class="grp"><div class="tool gbtn" style="border-color:var(--gold);color:var(--gold)">匯出 ▾</div><div class="gpop">
+        <div class="tool" id="expGltf" title="匯出 3D 模型 .glb：丟進 Blender/SketchUp/Twinmotion/Unreal 接續算圖">匯出 3D（glTF .glb）</div>
+        <div class="tool" id="expObj" title="匯出 3D 模型 .obj：通用格式各家軟體都讀得到">匯出 3D（OBJ）</div>
+        <div class="tool" id="expPdf" title="匯出平面圖 PDF：含平面圖＋3D 縮圖＋家具統計，可印給人">匯出 PDF（平面圖）</div>
+      </div></div>
       <input type="file" id="loadFile" accept="application/json">
       <input type="file" id="imgFile" accept="image/*,application/pdf,.pdf">
     </div>
@@ -266,6 +271,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -278,6 +284,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 
 // ===== 資料模型（單位：公尺）=====
 const FURN = {
@@ -1017,6 +1025,39 @@ wallHEl.onchange=()=>{plan.wallH=parseFloat(wallHEl.value)||2.8;rebuild();};
 document.getElementById('save').onclick=()=>{const b=new Blob([JSON.stringify(plan,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='plan.json';a.click();};
 document.getElementById('load').onclick=()=>document.getElementById('loadFile').click();
+// ─── 匯出：glTF/OBJ(3D 丟進別的軟體) + PDF(平面印給人) ───
+function downloadBlob(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); }
+function hasModel(){ if(!plan.walls.length&&!plan.furn.length){ alert('還沒有東西可以匯出，先畫牆/放家具或匯入平面圖'); return false; } return true; }
+function exportGLTF(){ if(!hasModel())return; const ex=new GLTFExporter();
+  ex.parse([modelGroup,furnGroup], (res)=>{ downloadBlob(new Blob([res],{type:'model/gltf-binary'}),'plan3d.glb');
+    document.getElementById('hint').textContent='已匯出 plan3d.glb — 可丟進 Blender / SketchUp / Twinmotion / Unreal 接續算圖'; },
+    (err)=>alert('glTF 匯出失敗：'+err), {binary:true,onlyVisible:true}); }
+function exportOBJ(){ if(!hasModel())return; const ex=new OBJExporter(); const wrap=new THREE.Group();
+  wrap.add(modelGroup); wrap.add(furnGroup); const txt=ex.parse(wrap); scene.add(modelGroup); scene.add(furnGroup);   // parse(同步)後把群組放回 scene
+  downloadBlob(new Blob([txt],{type:'text/plain'}),'plan3d.obj');
+  document.getElementById('hint').textContent='已匯出 plan3d.obj — 通用 3D 格式，各家軟體都讀得到'; }
+function exportPDF(){ if(!hasModel())return;
+  if(!(window.jspdf&&window.jspdf.jsPDF)){ document.getElementById('hint').textContent='PDF 元件未載入(需網路)，改用瀏覽器列印另存 PDF'; window.print(); return; }
+  const { jsPDF }=window.jspdf;
+  const ow=c2d.width,oh=c2d.height,ar=(oh/ow)||0.6;                                  // 先記原始長寬比
+  const cap=(()=>{ c2d.width=1800; c2d.height=Math.round(1800*ar)||1100; const sv={ox:view.ox,oy:view.oy,ppm:view.ppm};
+    fitted=false; fit2d(); fitted=true; render2d(); const u=c2d.toDataURL('image/jpeg',0.92);   // JPEG 壓縮，PDF 不爆肥
+    c2d.width=ow; c2d.height=oh; view.ox=sv.ox;view.oy=sv.oy;view.ppm=sv.ppm; fitted=true; render2d(); return u; })();
+  renderer.render(scene,cam); const shot=c3d.toDataURL('image/jpeg',0.88);
+  let mnx=1e9,mny=1e9,mxx=-1e9,mxy=-1e9; for(const w of plan.walls){mnx=Math.min(mnx,w.x1,w.x2);mny=Math.min(mny,w.y1,w.y2);mxx=Math.max(mxx,w.x1,w.x2);mxy=Math.max(mxy,w.y1,w.y2);}
+  const dimTxt=plan.walls.length?('外框 '+(mxx-mnx).toFixed(1)+' × '+(mxy-mny).toFixed(1)+' m'):'';
+  const counts={}; plan.furn.forEach(f=>{ const F=FURN[f.type]; const l=F?F.label:f.type; counts[l]=(counts[l]||0)+1; });
+  const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'}); const PW=297,PH=210,M=12;
+  pdf.setFontSize(16); pdf.setTextColor(30); pdf.text('Floor Plan  平面配置圖', M, M+2);
+  pdf.setFontSize(9); pdf.setTextColor(110); pdf.text(dimTxt+'    牆 '+plan.walls.length+'・門窗 '+plan.openings.length+'・家具 '+plan.furn.length, M, M+8);
+  const pw=PW-2*M-72, ph=Math.min(PH-M-22, pw*ar); pdf.addImage(cap,'JPEG',M,M+12,pw,ph);    // 平面圖(主)
+  pdf.addImage(shot,'JPEG',PW-M-66,M+12,66,44);                                                // 3D 縮圖(右上)
+  pdf.setFontSize(8); pdf.setTextColor(90); let yy=M+62; pdf.text('家具統計',PW-M-66,yy); yy+=4;
+  Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,28).forEach(([l,n])=>{ pdf.text(l+' × '+n,PW-M-66,yy); yy+=3.6; });
+  pdf.save('plan3d.pdf'); document.getElementById('hint').textContent='已匯出 plan3d.pdf（含平面圖＋3D 縮圖＋家具統計）'; }
+document.getElementById('expGltf')&&(document.getElementById('expGltf').onclick=exportGLTF);
+document.getElementById('expObj')&&(document.getElementById('expObj').onclick=exportOBJ);
+document.getElementById('expPdf')&&(document.getElementById('expPdf').onclick=exportPDF);
 document.getElementById('loadFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();
   rd.onload=()=>{try{plan=Object.assign(emptyPlan(),JSON.parse(rd.result));wallHEl.value=plan.wallH;fitted=false;fit2d();fitted=true;rebuild();}catch(err){alert('讀檔失敗：'+err);}};rd.readAsText(f);};
 
