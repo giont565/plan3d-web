@@ -28,7 +28,7 @@
   .wrap.only2d>.left{flex-basis:100%}
   .wrap.only3d>.left,.wrap.only3d>.divider{display:none}
   .wrap.only3d>.right{flex:1 1 100%}
-  .tools{display:flex;flex-wrap:nowrap;overflow:hidden;gap:6px;padding:9px 10px;border-bottom:1px solid var(--line);align-items:center}
+  .tools{display:flex;flex-wrap:wrap;gap:6px 7px;padding:8px 10px;border-bottom:1px solid var(--line);align-items:center}
   .tools>*{flex:0 0 auto}
   .tool{padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer;font-size:13px;user-select:none}
   .tool.sel{border-color:var(--gold);color:var(--text);background:#2a2616}
@@ -41,8 +41,15 @@
   .ofmenu .tool{width:100%;text-align:left}
   .ofmenu .sep{display:none}
   .ofmenu .fld{padding:2px 4px}
+  .grp{position:relative;display:inline-flex;flex:0 0 auto}
+  .gbtn{white-space:nowrap}
+  .grp.open .gbtn{border-color:var(--gold);color:var(--gold)}
+  .gpop{position:fixed;display:none;z-index:55;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px;flex-direction:column;gap:6px;box-shadow:0 12px 30px rgba(0,0,0,.55);min-width:152px;max-width:80vw}
+  .gpop .tool{width:100%;text-align:left;white-space:nowrap}
+  .gpop .fld{padding:3px 4px}
   .sep{width:1px;height:22px;background:var(--line);margin:0 3px}
   select,input[type=number]{background:#0e0e13;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:13px}
+  #furnType{max-width:116px} #tmplType{max-width:108px}   /* 鎖選單寬度，別把工具列撐爆(下拉清單仍顯示全名) */
   input[type=range]{vertical-align:middle}
   label.fld{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px}
   #cwrap{flex:1;position:relative;overflow:hidden;background:#0e0e12}
@@ -97,7 +104,6 @@
       <div class="tool sel" data-tool="wall">牆</div>
       <div class="tool" data-tool="door">門</div>
       <div class="tool" data-tool="window">窗</div>
-      <div class="tool" data-tool="rail">欄杆</div>
       <div class="tool" data-tool="furn">家具</div>
       <select id="furnType" title="家具種類">
         <optgroup label="辦公">
@@ -147,28 +153,34 @@
         <option value="eng1">工程師-單座</option><option value="eng2">工程師-雙座</option>
         <option value="deputy">副理</option><option value="secretary">秘書</option><option value="manager">部經辦公室</option>
       </select>
-      <div class="tool" data-tool="seatfill" title="拖一個區域，自動排滿工位、4 個朝向選座位最多">排座</div>
-      <label class="fld">走道<input id="aisleW" type="number" value="1.2" step="0.1" min="0.6" max="3" style="width:48px"> m</label>
       <div class="tool" data-tool="move">選取/移動</div>
-      <div class="tool" data-tool="erase">刪除</div>
-      <div class="tool" data-tool="selwall">框選刪牆</div>
-      <div class="tool" data-tool="setlen">設牆長校正</div>
+      <div class="grp"><div class="tool gbtn">工具 ▾</div><div class="gpop">
+        <div class="tool" data-tool="rail">欄杆</div>
+        <div class="tool" data-tool="seatfill" title="拖一個區域，自動排滿工位、4 個朝向選座位最多">排座</div>
+        <label class="fld">走道<input id="aisleW" type="number" value="1.2" step="0.1" min="0.6" max="3" style="width:48px"> m</label>
+        <div class="tool" data-tool="erase">刪除</div>
+        <div class="tool" data-tool="selwall">框選刪牆</div>
+        <div class="tool" data-tool="setlen">設牆長校正</div>
+      </div></div>
       <span class="lsep"></span>
       <div class="tool layerb act" data-layer="all" title="全部可編輯">▦ 全部</div>
       <div class="tool layerb" data-layer="struct" title="只編輯牆+柱（家具鎖住變淡）— 先把牆做好">▦ 結構</div>
       <div class="tool layerb" data-layer="furn" title="只編輯家具（牆+柱鎖住變淡）— 不會誤動做好的牆">▦ 家具</div>
-      <div class="tool" id="roomBtn" title="自動認出每個房間：算面積、畫「圓圈＋連線」看哪些房間有門相通；沒有門進得去的房間標紅">房間分析</div>
-      <div class="tool" id="lightBtn" title="依窗戶位置估算室內採光，疊上熱圖：亮黃＝光線好、深藍＝最暗（簡化估算、輔助比較用）">採光</div>
-      <div class="tool" id="scenBtn" title="把目前配置存成方案 A/B/C…，面積/房間/座位/採光並排比較、一鍵切換">方案比較</div>
-      <div class="sep"></div>
-      <label class="fld">牆高<input id="wallH" type="number" value="2.8" step="0.1" min="2" max="6" style="width:58px"> m</label>
-      <div class="sep"></div>
-      <div class="tool" id="undo">復原</div>
-      <div class="tool" id="clear">清空</div>
-      <div class="tool" id="sample">範例</div>
-      <div class="tool" id="save">存檔</div>
-      <div class="tool" id="load">讀檔</div>
-      <div class="tool" id="img">匯入底圖（圖片/PDF）</div>
+      <span class="lsep"></span>
+      <div class="grp"><div class="tool gbtn">分析 ▾</div><div class="gpop">
+        <div class="tool" id="roomBtn" title="自動認出每個房間：算面積、畫「圓圈＋連線」看哪些房間有門相通；沒有門進得去的房間標紅">房間分析</div>
+        <div class="tool" id="lightBtn" title="依窗戶位置估算室內採光，疊上熱圖：亮黃＝光線好、深藍＝最暗（簡化估算、輔助比較用）">採光</div>
+        <div class="tool" id="scenBtn" title="把目前配置存成方案 A/B/C…，面積/房間/座位/採光並排比較、一鍵切換">方案比較</div>
+      </div></div>
+      <div class="grp"><div class="tool gbtn">檔案 ▾</div><div class="gpop">
+        <label class="fld">牆高<input id="wallH" type="number" value="2.8" step="0.1" min="2" max="6" style="width:58px"> m</label>
+        <div class="tool" id="undo">復原</div>
+        <div class="tool" id="clear">清空</div>
+        <div class="tool" id="sample">範例</div>
+        <div class="tool" id="save">存檔</div>
+        <div class="tool" id="load">讀檔</div>
+        <div class="tool" id="img">匯入底圖（圖片/PDF）</div>
+      </div></div>
       <input type="file" id="loadFile" accept="application/json">
       <input type="file" id="imgFile" accept="image/*,application/pdf,.pdf">
     </div>
@@ -1789,6 +1801,15 @@ function setupOverflow(bar){
   reflowBar(bar);
 }
 document.addEventListener('click',(e)=>{ document.querySelectorAll('.ofmenu').forEach(m=>{ if(m.style.display!=='none' && !m.contains(e.target) && !(m._more&&m._more.contains(e.target))) m.style.display='none'; }); });
+// 分類下拉選單（工具/分析/檔案）：fixed 定位逃出工具列 overflow:hidden 裁切
+function closeGrps(){ document.querySelectorAll('.grp.open').forEach(x=>{ x.classList.remove('open'); const p=x.querySelector('.gpop'); if(p)p.style.display='none'; }); }
+document.querySelectorAll('.grp').forEach(g=>{ const btn=g.querySelector('.gbtn'), pop=g.querySelector('.gpop'); if(!btn||!pop)return;
+  btn.onclick=(e)=>{ e.stopPropagation(); const wasOpen=g.classList.contains('open'); closeGrps();
+    if(!wasOpen){ g.classList.add('open'); const r=btn.getBoundingClientRect(); pop.style.display='flex';
+      pop.style.left=Math.min(r.left,window.innerWidth-170)+'px'; pop.style.top=(r.bottom+5)+'px'; } };
+  pop.addEventListener('click',(e)=>{ if(e.target.closest('.tool')) closeGrps(); });   // 點功能鈕才關；拉 slider/打數字不關
+});
+document.addEventListener('click',(e)=>{ if(!e.target.closest('.grp')) closeGrps(); });
 document.querySelectorAll('.tools').forEach(setupOverflow);
 applyLayout();
 
