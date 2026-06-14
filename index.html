@@ -49,7 +49,15 @@
   .gpop .fld{padding:3px 4px}
   .sep{width:1px;height:22px;background:var(--line);margin:0 3px}
   select,input[type=number]{background:#0e0e13;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:13px}
-  #furnType{max-width:116px} #tmplType{max-width:108px}   /* 鎖選單寬度，別把工具列撐爆(下拉清單仍顯示全名) */
+  #tmplType{max-width:108px}   /* 鎖選單寬度，別把工具列撐爆 */
+  .pickpanel{position:fixed;z-index:60;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px;box-shadow:0 16px 40px rgba(0,0,0,.6);width:340px;max-height:72vh;overflow:auto}
+  .pickpanel .search{width:100%;box-sizing:border-box;margin-bottom:8px}
+  .pickpanel .cat{font-size:11px;color:var(--gold);margin:9px 2px 4px;font-weight:700}
+  .pickpanel .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .pickpanel .chip{padding:5px 9px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--text);cursor:pointer;font-size:12.5px;user-select:none}
+  .pickpanel .chip:hover{border-color:var(--gold)}
+  .pickpanel .chip.cur{border-color:var(--gold);color:var(--gold);background:#2a2616}
+  #furnPick{font-weight:600}
   input[type=range]{vertical-align:middle}
   label.fld{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px}
   #cwrap{flex:1;position:relative;overflow:hidden;background:#0e0e12}
@@ -105,7 +113,9 @@
       <div class="tool" data-tool="door">門</div>
       <div class="tool" data-tool="window">窗</div>
       <div class="tool" data-tool="furn">家具</div>
-      <select id="furnType" title="家具種類">
+      <div class="tool" id="furnPick" title="選家具種類（可搜尋）">工位 ▾</div>
+      <div id="furnPanel" class="pickpanel" style="display:none"></div>
+      <select id="furnType" title="家具種類" style="display:none">
         <optgroup label="辦公">
           <option value="workstation">工位</option><option value="desk">辦公桌</option>
           <option value="ochair">辦公椅</option><option value="gchair">會客椅</option><option value="conf">會議桌</option>
@@ -1810,6 +1820,28 @@ document.querySelectorAll('.grp').forEach(g=>{ const btn=g.querySelector('.gbtn'
   pop.addEventListener('click',(e)=>{ if(e.target.closest('.tool')) closeGrps(); });   // 點功能鈕才關；拉 slider/打數字不關
 });
 document.addEventListener('click',(e)=>{ if(!e.target.closest('.grp')) closeGrps(); });
+// 家具選取面板：把 60+ 項下拉換成「可搜尋 + 分類 chip」面板（從 #furnType 自動建、保持同步）
+(function(){ const sel=document.getElementById('furnType'), pick=document.getElementById('furnPick'), panel=document.getElementById('furnPanel'); if(!sel||!pick||!panel)return;
+  const curLabel=()=>{ const o=sel.options[sel.selectedIndex]; return o?o.textContent:'家具'; };
+  pick.textContent=curLabel()+' ▾';
+  let html='<input class="search" type="text" placeholder="搜尋家具…（例：椅 / 屏風 / 沙發）">';
+  [...sel.querySelectorAll('optgroup')].forEach(og=>{ html+='<div class="cat">'+og.label+'</div><div class="chips">';
+    [...og.querySelectorAll('option')].forEach(o=>{ html+='<div class="chip" data-val="'+o.value+'">'+o.textContent+'</div>'; }); html+='</div>'; });
+  panel.innerHTML=html;
+  const search=panel.querySelector('.search');
+  const mark=()=>panel.querySelectorAll('.chip').forEach(c=>c.classList.toggle('cur',c.dataset.val===sel.value));
+  function filter(q){ q=(q||'').trim(); panel.querySelectorAll('.cat').forEach(cat=>{ const chips=cat.nextElementSibling; let any=false;
+    chips.querySelectorAll('.chip').forEach(c=>{ const show=!q||c.textContent.indexOf(q)>=0; c.style.display=show?'':'none'; if(show)any=true; });
+    cat.style.display=any?'':'none'; chips.style.display=any?'':'none'; }); }
+  function openP(){ const r=pick.getBoundingClientRect(); panel.style.display='block'; panel.style.left=Math.min(r.left,window.innerWidth-350)+'px'; panel.style.top=(r.bottom+5)+'px'; search.value=''; filter(''); mark(); setTimeout(()=>search.focus(),0); }
+  const closeP=()=>{ panel.style.display='none'; };
+  pick.addEventListener('click',(e)=>{ e.stopPropagation(); (panel.style.display==='none'||!panel.style.display)?openP():closeP(); });
+  search.addEventListener('input',()=>filter(search.value));
+  search.addEventListener('click',e=>e.stopPropagation());
+  panel.addEventListener('click',(e)=>{ const chip=e.target.closest('.chip'); if(!chip)return; sel.value=chip.dataset.val; sel.dispatchEvent(new Event('change'));
+    pick.textContent=curLabel()+' ▾'; closeP(); const fb=document.querySelector('.tool[data-tool="furn"]'); if(fb)fb.click(); });   // 選完直接進放置模式
+  document.addEventListener('click',(e)=>{ if(!panel.contains(e.target)&&e.target!==pick) closeP(); });
+})();
 document.querySelectorAll('.tools').forEach(setupOverflow);
 applyLayout();
 
