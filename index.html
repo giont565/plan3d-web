@@ -120,6 +120,10 @@
           <option value="exchair">主管椅</option><option value="estchair">競電椅</option><option value="trchair">培訓椅</option>
           <option value="shellchair">貝殼椅</option><option value="foldchair">折合椅</option><option value="gangchair">機場排椅</option><option value="sledchair">洽談懸臂椅</option>
         </optgroup>
+        <optgroup label="桌·會議桌(普立美)">
+          <option value="mtable">主管桌(木)</option><option value="liftdesk">升降桌</option><option value="trapdesk">梯形會議桌</option>
+          <option value="boatable">船型會議桌</option><option value="flipconf">掀合會議桌</option>
+        </optgroup>
         <optgroup label="沙發桌椅">
           <option value="sectional">轉角沙發</option><option value="armchair">單人沙發</option>
           <option value="round">圓桌</option><option value="stool">圓凳</option>
@@ -298,6 +302,12 @@ const FURN = {
   foldchair:{w:0.46,d:0.5,h:0.82, c:0x40444a, mat:'metal',  label:'折合椅'},     // 折合椅
   gangchair:{w:1.8,d:0.62,h:0.82, c:0x2b2d31, mat:'fabric', label:'機場排椅'},   // 3 人連排公共椅
   sledchair:{w:0.6,d:0.62,h:0.86, c:0x2b2d31, mat:'fabric', label:'洽談懸臂椅'}, // 懸臂(雪橇)腳訪客椅
+  // ── 普立美 桌/會議桌系列 ──
+  mtable:   {w:1.8,d:0.9,h:0.74, c:0x6b4a32, mat:'wood',  label:'主管桌(木)'},   // 木製主管桌+側櫃+擋板
+  liftdesk: {w:1.4,d:0.7,h:0.74, c:0xc7a675, mat:'wood',  label:'升降桌'},        // 電動升降桌(雙柱)
+  trapdesk: {w:1.4,d:0.7,h:0.74, c:0xc7a675, mat:'wood',  label:'梯形會議桌'},    // 可拼接梯形
+  boatable: {w:2.4,d:1.1,h:0.74, c:0x8d6e63, mat:'wood',  label:'船型會議桌'},    // 船型(中段較寬)
+  flipconf: {w:1.5,d:0.6,h:0.74, c:0xc7a675, mat:'wood',  label:'掀合會議桌'},    // 掀合/折合(滾輪)
 };
 const DOOR_W=0.9, WIN_W=1.2, WIN_SILL=0.9, WIN_HEAD=2.2;
 function effFurn(f){ const B=FURN[f.type]; if(!B) return null;   // 每件家具的尺寸/顏色覆寫（沒設就用預設）
@@ -310,6 +320,8 @@ function furnPath2D(ctx,f,F){ const P=view.ppm, hw=Math.max(1,F.w*P/2), hd=Math.
     ctx.arc(0,0,Math.min(hw,hd),0,Math.PI*2); return {x:0,y:0}; }            // 圓桌/圓凳/各式辦公椅/盆栽＝圓（機場排椅 gangchair 用矩形）
   if(f.type==='etable'){ ctx.ellipse(0,0,hw,hd,0,0,Math.PI*2); return {x:0,y:0}; }   // 橢圓會議桌＝橢圓
   if(f.type==='wtable'){ ctx.moveTo(-hw,-hd); ctx.lineTo(hw-hd,-hd); ctx.arc(hw-hd,0,hd,-Math.PI/2,Math.PI/2); ctx.lineTo(-hw,hd); ctx.closePath(); return {x:-hd*0.3,y:0}; }   // 靠牆會議桌＝長方+右端半圓(D形)
+  if(f.type==='trapdesk'){ ctx.moveTo(-hw*0.58,-hd); ctx.lineTo(hw*0.58,-hd); ctx.lineTo(hw,hd); ctx.lineTo(-hw,hd); ctx.closePath(); return {x:0,y:0}; }   // 梯形會議桌＝後窄前寬
+  if(f.type==='boatable'){ ctx.moveTo(-hw,-hd*0.62); ctx.quadraticCurveTo(0,-hd,hw,-hd*0.62); ctx.lineTo(hw,hd*0.62); ctx.quadraticCurveTo(0,hd,-hw,hd*0.62); ctx.closePath(); return {x:0,y:0}; }   // 船型會議桌＝長邊外凸
   if(f.type==='ldesk'){ const a=arm(0.72);                                   // L型辦公桌：缺右下角(後緣橫臂＋左緣縱臂)
     ctx.moveTo(-hw,-hd);ctx.lineTo(hw,-hd);ctx.lineTo(hw,-hd+a);ctx.lineTo(-hw+a,-hd+a);ctx.lineTo(-hw+a,hd);ctx.lineTo(-hw,hd);ctx.closePath();
     return {x:0,y:-hd+a/2}; }
@@ -1287,6 +1299,32 @@ function buildPiece(f){ const F=effFurn(f); const g=new THREE.Group(); const woo
     const leg=box(0.07,F.h-0.06,0.07,met); leg.position.set(0,(F.h-0.06)/2,F.d/2-0.07); g.add(leg);      // 外端「一隻腳」(不是面)
     const foot=box(F.w*0.66,0.03,0.12,met); foot.position.set(0,0.015,F.d/2-0.07); g.add(foot);          // 腳底 T 橫條
     const brk=box(F.w-0.08,0.07,0.07,met); brk.position.set(0,F.h-0.12,-F.d/2+0.05); g.add(brk); }        // 內端托架(接主桌·無腳)
+  else if(f.type==='mtable'){ const wd=furnMat(F.c,'wood'), met=furnMat(0x5a5d63,'metal');   // 木製主管桌+右抽屜櫃+前擋板
+    const top=box(F.w,0.06,F.d,wd); top.position.y=F.h-0.03; g.add(top);
+    const mod=box(F.w-0.5,F.h-0.14,0.04,wd); mod.position.set(0,(F.h-0.14)/2,-F.d/2+0.05); g.add(mod);
+    const ped=box(0.42,F.h-0.08,F.d-0.05,wd); ped.position.set(F.w/2-0.25,(F.h-0.08)/2,0); g.add(ped);
+    for(let r=0;r<3;r++){ const h=box(0.18,0.02,0.014,met); h.position.set(F.w/2-0.25,0.22+r*0.17,F.d/2-0.015); g.add(h); }
+    const lp=box(0.05,F.h-0.08,F.d-0.05,wd); lp.position.set(-F.w/2+0.04,(F.h-0.08)/2,0); g.add(lp); }
+  else if(f.type==='liftdesk'){ const wd=furnMat(F.c,'wood'), met=furnMat(0x6d6f73,'metal'), dk=furnMat(0x4a4d52,'metal');   // 電動升降桌(雙伸縮柱)
+    const top=box(F.w,0.05,F.d,wd); top.position.y=F.h-0.025; g.add(top);
+    [-1,1].forEach(s=>{ const x=s*(F.w/2-0.25);
+      const col2=box(0.1,F.h-0.12,0.1,met); col2.position.set(x,(F.h-0.12)/2+0.05,0); g.add(col2);
+      const col1=box(0.07,F.h*0.55,0.07,dk); col1.position.set(x,F.h*0.3,0); g.add(col1);
+      const ft=box(0.09,0.04,F.d*0.7,dk); ft.position.set(x,0.02,0); g.add(ft); }); }
+  else if(f.type==='trapdesk'){ const wd=furnMat(F.c,'wood'), met=furnMat(0x9aa0a6,'metal');   // 梯形會議桌(3D 桌板近似矩形)
+    const top=box(F.w,0.05,F.d,wd); top.position.y=F.h-0.025; g.add(top);
+    const lh=F.h-0.05; [[-0.58,-1],[0.58,-1],[1,1],[-1,1]].forEach(([sx,sz])=>{ const lg=cyl(0.022,0.022,lh,met,10); lg.position.set(sx*(F.w/2-0.08),lh/2,sz*(F.d/2-0.08)); g.add(lg); }); }
+  else if(f.type==='boatable'){ const wd=furnMat(F.c,'wood'), met=furnMat(0x9aa0a6,'metal');   // 船型會議桌(橢圓近似)
+    const top=cyl(0.5,0.5,0.06,wd,40); top.scale.set(F.w,1,F.d); top.position.y=F.h-0.03; g.add(top);
+    const edge=cyl(0.5,0.5,0.018,met,40); edge.scale.set(F.w*0.99,1,F.d*0.99); edge.position.y=F.h-0.062; g.add(edge);
+    [-1,1].forEach(s=>{ const col=cyl(0.06,0.08,F.h-0.1,met,16); col.position.set(s*F.w*0.28,(F.h-0.1)/2,0); g.add(col);
+      const ft=box(0.5,0.04,0.5,met); ft.position.set(s*F.w*0.28,0.02,0); g.add(ft); }); }
+  else if(f.type==='flipconf'){ const wd=furnMat(F.c,'wood'), met=furnMat(0x6d6f73,'metal'), blk=furnMat(0x18191d,'fabric');   // 掀合會議桌(折合+滾輪)
+    const top=box(F.w,0.05,F.d,wd); top.position.y=F.h-0.025; g.add(top);
+    [-1,1].forEach(s=>{ const x=s*(F.w/2-0.2);
+      const bar=box(0.04,0.04,F.d-0.05,met); bar.position.set(x,0.06,0); g.add(bar);
+      [-1,1].forEach(z=>{ const leg=box(0.04,F.h-0.1,0.04,met); leg.position.set(x,(F.h-0.1)/2+0.06,z*(F.d/2-0.06)); g.add(leg);
+        const wh=cyl(0.03,0.03,0.04,blk,12); wh.rotation.x=Math.PI/2; wh.position.set(x,0.03,z*(F.d/2-0.06)); g.add(wh); }); }); }
   else if(f.type==='table'||f.type==='conf'){ const top=box(F.w,0.06,F.d,wood);top.position.y=F.h-0.03;g.add(top);
     const lh=F.h-0.06; [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>{const lg=box(0.07,lh,0.07,wood);lg.position.set(sx*(F.w/2-0.07),lh/2,sz*(F.d/2-0.07));g.add(lg);}); }
   else if(f.type==='chair'){ const seat=box(F.w,0.06,F.d,wood);seat.position.y=0.45;g.add(seat);
