@@ -116,6 +116,10 @@
           <option value="partL">低屏風</option><option value="partM">中屏風</option><option value="partH">高布隔間</option>
           <option value="partGL">玻璃布隔間</option><option value="partFG">全玻璃隔間</option><option value="cpost">走線柱</option>
         </optgroup>
+        <optgroup label="辦公椅(普立美)">
+          <option value="exchair">主管椅</option><option value="estchair">競電椅</option><option value="trchair">培訓椅</option>
+          <option value="shellchair">貝殼椅</option><option value="foldchair">折合椅</option><option value="gangchair">機場排椅</option><option value="sledchair">洽談懸臂椅</option>
+        </optgroup>
         <optgroup label="沙發桌椅">
           <option value="sectional">轉角沙發</option><option value="armchair">單人沙發</option>
           <option value="round">圓桌</option><option value="stool">圓凳</option>
@@ -286,6 +290,14 @@ const FURN = {
   partGL:   {w:1.2,d:0.05,h:1.8, c:0x9aa7b3, mat:'fabric', label:'玻璃布隔間'}, // 上霧玻+下布(H172/H122 款)
   partFG:   {w:1.2,d:0.05,h:1.9, c:0xcfe6ee, mat:'metal',  label:'全玻璃隔間'}, // 會議室清玻隔間
   cpost:    {w:0.08,d:0.08,h:1.8,c:0x9aa0a6, mat:'metal',  label:'走線柱'},     // 6/8cm 走線柱/轉角柱
+  // ── 普立美 辦公椅系列 ──
+  exchair:  {w:0.7,d:0.72,h:1.25,c:0x2a2622, mat:'fabric', label:'主管椅'},     // 高背皮椅+頭枕+T扶手+五爪輪
+  estchair: {w:0.72,d:0.74,h:1.32,c:0x24262b,mat:'fabric', label:'競電椅'},     // 賽車桶背+側翼+頭枕腰枕
+  trchair:  {w:0.58,d:0.6,h:0.86, c:0x3a3d42, mat:'fabric', label:'培訓椅'},     // 折合書寫板+四腳滾輪
+  shellchair:{w:0.55,d:0.55,h:0.8,c:0x4a5660, mat:'fabric', label:'貝殼椅'},     // 一體殼+四斜腳(可疊)
+  foldchair:{w:0.46,d:0.5,h:0.82, c:0x40444a, mat:'metal',  label:'折合椅'},     // 折合椅
+  gangchair:{w:1.8,d:0.62,h:0.82, c:0x2b2d31, mat:'fabric', label:'機場排椅'},   // 3 人連排公共椅
+  sledchair:{w:0.6,d:0.62,h:0.86, c:0x2b2d31, mat:'fabric', label:'洽談懸臂椅'}, // 懸臂(雪橇)腳訪客椅
 };
 const DOOR_W=0.9, WIN_W=1.2, WIN_SILL=0.9, WIN_HEAD=2.2;
 function effFurn(f){ const B=FURN[f.type]; if(!B) return null;   // 每件家具的尺寸/顏色覆寫（沒設就用預設）
@@ -293,8 +305,9 @@ function effFurn(f){ const B=FURN[f.type]; if(!B) return null;   // 每件家具
 // 2D 俯視輪廓：依家具型別在已 translate+rotate 的 local 座標建 path（呼叫端統一 fill+stroke），與右側 3D 造型對齊；回傳 label 錨點
 function furnPath2D(ctx,f,F){ const P=view.ppm, hw=Math.max(1,F.w*P/2), hd=Math.max(1,F.d*P/2); ctx.beginPath();  // 半尺寸夾正：防負/零尺寸令 arc 拋例外、L 形自交
   const arm=m=>Math.min(Math.max(m*P,2), Math.min(hw,hd)*1.5);   // 臂厚 px：固定公尺(與 3D 同)，夾在 [2, 短半徑×1.5] 恆正且不吃掉整塊
-  if(f.type==='round'||f.type==='stool'||f.type==='ochair'||f.type==='gchair'||f.type==='plant'||f.type==='schair'){
-    ctx.arc(0,0,Math.min(hw,hd),0,Math.PI*2); return {x:0,y:0}; }            // 圓桌/圓凳/辦公椅/輕量椅/盆栽＝圓
+  if(f.type==='round'||f.type==='stool'||f.type==='ochair'||f.type==='gchair'||f.type==='plant'||f.type==='schair'
+     ||f.type==='exchair'||f.type==='estchair'||f.type==='trchair'||f.type==='shellchair'||f.type==='foldchair'||f.type==='sledchair'){
+    ctx.arc(0,0,Math.min(hw,hd),0,Math.PI*2); return {x:0,y:0}; }            // 圓桌/圓凳/各式辦公椅/盆栽＝圓（機場排椅 gangchair 用矩形）
   if(f.type==='etable'){ ctx.ellipse(0,0,hw,hd,0,0,Math.PI*2); return {x:0,y:0}; }   // 橢圓會議桌＝橢圓
   if(f.type==='wtable'){ ctx.moveTo(-hw,-hd); ctx.lineTo(hw-hd,-hd); ctx.arc(hw-hd,0,hd,-Math.PI/2,Math.PI/2); ctx.lineTo(-hw,hd); ctx.closePath(); return {x:-hd*0.3,y:0}; }   // 靠牆會議桌＝長方+右端半圓(D形)
   if(f.type==='ldesk'){ const a=arm(0.72);                                   // L型辦公桌：缺右下角(後緣橫臂＋左緣縱臂)
@@ -1204,6 +1217,11 @@ function box(w,h,d,mat){ let geo; if(_roundOK){ try{ const r=Math.max(0.004,Math
   if(!geo) geo=new THREE.BoxGeometry(w,h,d);   // 圓角幾何建構失敗→退回普通方塊(家具仍正常顯示·不會整個空白)
   const m=new THREE.Mesh(geo,mat); m.castShadow=true;m.receiveShadow=true; return m; }
 function cyl(rt,rb,h,mat,seg){ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||24),mat); m.castShadow=true;m.receiveShadow=true; return m; }
+function chairBase(g,met,blk){ const post=cyl(0.03,0.06,0.31,met,16); post.position.y=0.28; g.add(post);   // 共用五爪輪底座
+  const hub=cyl(0.07,0.07,0.05,blk,16); hub.position.y=0.1; g.add(hub);
+  for(let i=0;i<5;i++){ const a=i*Math.PI*2/5;
+    const leg=box(0.34,0.04,0.07,met); leg.position.set(Math.cos(a)*0.17,0.08,Math.sin(a)*0.17); leg.rotation.y=-a; g.add(leg);
+    const wh=cyl(0.034,0.034,0.05,blk,14); wh.rotation.x=Math.PI/2; wh.position.set(Math.cos(a)*0.31,0.04,Math.sin(a)*0.31); g.add(wh); } }
 function addWallBox(g,a,b,y0,y1,T,mat){ const len=Math.hypot(b[0]-a[0],b[1]-a[1]); if(len<1e-3||y1-y0<1e-3)return;
   const m=box(len,y1-y0,T,mat); const mx=(a[0]+b[0])/2,mz=(a[1]+b[1])/2,ang=Math.atan2(b[1]-a[1],b[0]-a[0]);
   m.position.set(mx,(y0+y1)/2,mz); m.rotation.y=-ang; g.add(m); }
@@ -1285,6 +1303,53 @@ function buildPiece(f){ const F=effFurn(f); const g=new THREE.Group(); const woo
     const cbk=box(0.46,0.5,0.07,fab); cbk.position.set(cx,0.74,cz+0.2); g.add(cbk);
     const pst=box(0.06,0.36,0.06,met); pst.position.set(cx,0.27,cz); g.add(pst);
     const cbs=box(0.46,0.05,0.46,met); cbs.position.set(cx,0.04,cz); g.add(cbs); }   // 工位＝桌+屏風+三層櫃+椅
+  else if(f.type==='exchair'){ const lea=furnMat(F.c,'fabric'), met=furnMat(0x3a3d42,'metal'), blk=furnMat(0x18191d,'fabric');   // 主管椅：高背皮+頭枕+T扶手+五爪
+    const seat=box(0.56,0.13,0.52,lea); seat.position.y=0.45; g.add(seat);
+    const back=box(0.54,0.74,0.1,lea); back.position.set(0,0.9,-0.22); back.rotation.x=-0.1; g.add(back);
+    const head=box(0.4,0.2,0.1,lea); head.position.set(0,1.32,-0.27); head.rotation.x=-0.1; g.add(head);
+    [-1,1].forEach(s=>{ const ap=box(0.05,0.2,0.05,blk); ap.position.set(s*0.31,0.55,0); g.add(ap);
+      const at=box(0.08,0.05,0.34,blk); at.position.set(s*0.31,0.66,0); g.add(at); });
+    chairBase(g,met,blk); }
+  else if(f.type==='estchair'){ const fab=furnMat(F.c,'fabric'), red=furnMat(0xb23b3b,'fabric'), met=furnMat(0x3a3d42,'metal'), blk=furnMat(0x18191d,'fabric');  // 競電椅：賽車桶背+側翼+頭枕腰枕
+    const seat=box(0.54,0.13,0.52,fab); seat.position.y=0.46; g.add(seat);
+    [-1,1].forEach(s=>{ const bol=box(0.08,0.11,0.5,red); bol.position.set(s*0.25,0.54,0); g.add(bol); });
+    const back=box(0.5,0.82,0.1,fab); back.position.set(0,0.98,-0.22); back.rotation.x=-0.08; g.add(back);
+    [-1,1].forEach(s=>{ const wing=box(0.08,0.72,0.12,red); wing.position.set(s*0.23,0.98,-0.2); wing.rotation.x=-0.08; g.add(wing); });
+    const head=box(0.26,0.18,0.1,red); head.position.set(0,1.42,-0.26); head.rotation.x=-0.08; g.add(head);
+    const lum=box(0.3,0.14,0.1,red); lum.position.set(0,0.72,-0.16); g.add(lum);
+    [-1,1].forEach(s=>{ const at=box(0.09,0.05,0.3,blk); at.position.set(s*0.31,0.66,0); g.add(at); });
+    chairBase(g,met,blk); }
+  else if(f.type==='trchair'){ const fab=furnMat(F.c,'fabric'), met=furnMat(0x6d6f73,'metal'), wd=furnMat(0xcdb89a,'wood'), blk=furnMat(0x18191d,'fabric');  // 培訓椅：折合書寫板+四腳滾輪
+    const seat=box(0.46,0.08,0.44,fab); seat.position.y=0.46; g.add(seat);
+    const back=box(0.44,0.4,0.06,fab); back.position.set(0,0.72,-0.2); back.rotation.x=-0.08; g.add(back);
+    const tablet=box(0.34,0.025,0.28,wd); tablet.position.set(0.42,0.7,0.02); g.add(tablet);
+    const arm=box(0.04,0.24,0.04,met); arm.position.set(0.27,0.58,0.05); g.add(arm);
+    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>{ const lg=cyl(0.018,0.018,0.42,met,8); lg.position.set(sx*0.2,0.21,sz*0.2); g.add(lg);
+      const wh=cyl(0.03,0.03,0.04,blk,12); wh.rotation.x=Math.PI/2; wh.position.set(sx*0.22,0.03,sz*0.22); g.add(wh); }); }
+  else if(f.type==='shellchair'){ const shell=furnMat(F.c,'fabric'), met=furnMat(0x9aa0a6,'metal');   // 貝殼椅：一體殼+四斜腳
+    const seat=box(0.46,0.06,0.44,shell); seat.position.y=0.45; g.add(seat);
+    const back=box(0.46,0.42,0.06,shell); back.position.set(0,0.66,-0.2); back.rotation.x=-0.12; g.add(back);
+    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>{ const lg=cyl(0.016,0.022,0.46,met,8); lg.position.set(sx*0.19,0.22,sz*0.19); lg.rotation.z=sx*0.13; lg.rotation.x=-sz*0.13; g.add(lg); }); }
+  else if(f.type==='foldchair'){ const fab=furnMat(F.c,'fabric'), met=furnMat(0x6d6f73,'metal');   // 折合椅
+    const seat=box(0.42,0.05,0.4,fab); seat.position.y=0.45; g.add(seat);
+    const back=box(0.42,0.4,0.05,fab); back.position.set(0,0.68,-0.18); back.rotation.x=-0.06; g.add(back);
+    [-1,1].forEach(s=>{ const f1=box(0.03,0.52,0.03,met); f1.position.set(s*0.18,0.25,0.15); f1.rotation.x=0.2; g.add(f1);
+      const f2=box(0.03,0.64,0.03,met); f2.position.set(s*0.18,0.31,-0.12); f2.rotation.x=-0.14; g.add(f2); });
+    const cross=box(0.36,0.03,0.03,met); cross.position.set(0,0.22,0); g.add(cross); }
+  else if(f.type==='gangchair'){ const fab=furnMat(F.c,'fabric'), met=furnMat(0x6d6f73,'metal'), blk=furnMat(0x33363b,'metal');   // 機場排椅：3 人連排
+    const beam=box(F.w-0.1,0.08,0.12,blk); beam.position.set(0,0.4,0.06); g.add(beam);
+    for(let k=-1;k<=1;k++){ const x=k*((F.w-0.2)/3);
+      const seat=box(0.5,0.07,0.46,fab); seat.position.set(x,0.45,0); g.add(seat);
+      const back=box(0.5,0.42,0.06,fab); back.position.set(x,0.7,-0.2); back.rotation.x=-0.08; g.add(back); }
+    [-1,1].forEach(s=>{ const leg=box(0.05,0.4,0.5,met); leg.position.set(s*(F.w/2-0.15),0.2,0.05); g.add(leg);
+      const ft=box(0.07,0.03,0.64,blk); ft.position.set(s*(F.w/2-0.15),0.015,0.05); g.add(ft); }); }
+  else if(f.type==='sledchair'){ const fab=furnMat(F.c,'fabric'), met=furnMat(0xb0b5bb,'metal');   // 洽談懸臂(雪橇)椅
+    const seat=box(0.48,0.08,0.46,fab); seat.position.y=0.46; g.add(seat);
+    const back=box(0.46,0.44,0.06,fab); back.position.set(0,0.72,-0.2); back.rotation.x=-0.08; g.add(back);
+    [-1,1].forEach(s=>{ const rail=box(0.03,0.03,0.52,met); rail.position.set(s*0.2,0.03,0.02); g.add(rail);
+      const up=box(0.03,0.44,0.03,met); up.position.set(s*0.2,0.24,0.24); g.add(up);
+      const cant=box(0.03,0.03,0.46,met); cant.position.set(s*0.2,0.45,0.0); g.add(cant);
+      const arm=box(0.04,0.04,0.4,met); arm.position.set(s*0.24,0.62,0.02); g.add(arm); }); }
   else if(f.type==='ochair'){ const fab=furnMat(F.c,'fabric'), met=furnMat(0x33363b,'metal'), blk=furnMat(0x18191d,'fabric'), mesh=furnMat(0x44474e,'fabric');
     const seat=box(0.48,0.09,0.46,fab); seat.position.y=0.45; g.add(seat);                                  // 座墊
     const cush=box(0.42,0.05,0.4,fab); cush.position.y=0.5; g.add(cush);                                     // 坐墊上層
