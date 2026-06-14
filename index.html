@@ -124,6 +124,10 @@
           <option value="mtable">主管桌(木)</option><option value="liftdesk">升降桌</option><option value="trapdesk">梯形會議桌</option>
           <option value="boatable">船型會議桌</option><option value="flipconf">掀合會議桌</option>
         </optgroup>
+        <optgroup label="櫃類(普立美)">
+          <option value="wardrobe">衣櫃</option><option value="highcab">高櫃</option><option value="glasscab">玻璃門櫃</option>
+          <option value="locker">置物櫃</option><option value="lateralfile">公文櫃</option><option value="safe">保險箱</option>
+        </optgroup>
         <optgroup label="沙發桌椅">
           <option value="sectional">轉角沙發</option><option value="armchair">單人沙發</option>
           <option value="round">圓桌</option><option value="stool">圓凳</option>
@@ -308,6 +312,13 @@ const FURN = {
   trapdesk: {w:1.4,d:0.7,h:0.74, c:0xc7a675, mat:'wood',  label:'梯形會議桌'},    // 可拼接梯形
   boatable: {w:2.4,d:1.1,h:0.74, c:0x8d6e63, mat:'wood',  label:'船型會議桌'},    // 船型(中段較寬)
   flipconf: {w:1.5,d:0.6,h:0.74, c:0xc7a675, mat:'wood',  label:'掀合會議桌'},    // 掀合/折合(滾輪)
+  // ── 普立美 櫃類系列 ──
+  wardrobe: {w:0.9,d:0.55,h:1.85,c:0xd8cdb8, mat:'wood', label:'衣櫃'},        // 雙門衣櫃
+  highcab:  {w:0.9,d:0.45,h:1.85,c:0xe4e0d8, mat:'wood', label:'高櫃'},        // 全高組合櫃(上開放下門)
+  glasscab: {w:0.9,d:0.4,h:1.85, c:0xe4e0d8, mat:'wood', label:'玻璃門櫃'},    // 上玻下門書櫃/展示
+  locker:   {w:0.9,d:0.45,h:1.8, c:0xbfc6cc, mat:'metal',label:'置物櫃'},      // 多格員工置物櫃
+  lateralfile:{w:0.9,d:0.5,h:1.05,c:0xd5d7db,mat:'metal',label:'公文櫃'},      // 橫式二抽公文櫃
+  safe:     {w:0.5,d:0.5,h:0.6,  c:0x44474c, mat:'metal',label:'保險箱'},      // 金庫/保險箱
 };
 const DOOR_W=0.9, WIN_W=1.2, WIN_SILL=0.9, WIN_HEAD=2.2;
 function effFurn(f){ const B=FURN[f.type]; if(!B) return null;   // 每件家具的尺寸/顏色覆寫（沒設就用預設）
@@ -1446,6 +1457,42 @@ function buildPiece(f){ const F=effFurn(f); const g=new THREE.Group(); const woo
   else if(f.type==='reception'){ const wood=furnMat(F.c,'wood');
     const body=box(F.w,F.h-0.06,F.d,wood); body.position.y=(F.h-0.06)/2; g.add(body);
     const ledge=box(F.w+0.12,0.06,F.d+0.12,furnMat(0x3a3a42,'plaster')); ledge.position.y=F.h-0.03; g.add(ledge); }
+  else if(f.type==='wardrobe'){ const wd=furnMat(F.c,'wood'), met=furnMat(0x9aa0a6,'metal');   // 雙門衣櫃
+    const body=box(F.w,F.h-0.04,F.d,wd); body.position.y=(F.h-0.04)/2+0.02; g.add(body);
+    const top=box(F.w+0.03,0.05,F.d+0.03,wd); top.position.y=F.h-0.02; g.add(top);
+    const seam=box(0.012,F.h-0.12,0.012,met); seam.position.set(0,F.h/2,F.d/2+0.005); g.add(seam);
+    [-1,1].forEach(s=>{ const h=box(0.02,0.18,0.025,met); h.position.set(s*0.05,F.h*0.5,F.d/2+0.012); g.add(h); });
+    const base=box(F.w,0.06,F.d,met); base.position.y=0.03; g.add(base); }
+  else if(f.type==='highcab'){ const wd=furnMat(F.c,'wood'), met=furnMat(0x9aa0a6,'metal'); const splitY=F.h*0.55;   // 上開放層板+下門
+    const body=box(F.w,F.h-0.04,F.d,wd); body.position.y=(F.h-0.04)/2+0.02; g.add(body);
+    const back=box(F.w-0.06,F.h-splitY-0.08,0.01,furnMat(0xcfcabf,'wood')); back.position.set(0,(splitY+F.h)/2,-F.d/2+0.03); g.add(back);
+    for(let i=1;i<=2;i++){ const sh=box(F.w-0.06,0.02,F.d-0.05,wd); sh.position.set(0,splitY+i*((F.h-splitY)/3),0); g.add(sh); }
+    [-1,1].forEach(s=>{ const h=box(0.02,0.14,0.02,met); h.position.set(s*0.06,splitY*0.5,F.d/2+0.012); g.add(h); });
+    const mid=box(F.w,0.03,F.d+0.01,met); mid.position.y=splitY; g.add(mid);
+    const base=box(F.w,0.06,F.d,met); base.position.y=0.03; g.add(base); }
+  else if(f.type==='glasscab'){ const wd=furnMat(F.c,'wood'), met=furnMat(0x9aa0a6,'metal'); const splitY=F.h*0.5;   // 上玻下木門
+    const fglass=new THREE.MeshStandardMaterial({color:0xdfeef2,transparent:true,opacity:.4,roughness:.1});
+    const lower=box(F.w,splitY,F.d,wd); lower.position.y=splitY/2; g.add(lower);
+    const upframe=box(F.w,F.h-splitY,F.d,wd); upframe.position.y=(splitY+F.h)/2; g.add(upframe);
+    const glass=box(F.w-0.08,F.h-splitY-0.1,0.012,fglass); glass.position.set(0,(splitY+F.h)/2,F.d/2-0.004); g.add(glass);
+    const top=box(F.w+0.03,0.04,F.d+0.03,wd); top.position.y=F.h-0.02; g.add(top);
+    [-1,1].forEach(s=>{ const h=box(0.02,0.12,0.02,met); h.position.set(s*0.06,splitY*0.5,F.d/2+0.012); g.add(h); }); }
+  else if(f.type==='locker'){ const met=furnMat(F.c,'metal'), dk=furnMat(0x6d6f73,'metal'), hl=furnMat(0xc2c6cc,'metal');   // 多格置物櫃
+    const body=box(F.w,F.h,F.d,met); body.position.y=F.h/2; g.add(body);
+    const cols=2, rows=3;
+    for(let cI=0;cI<cols;cI++)for(let rI=0;rI<rows;rI++){ const cx=(cI-(cols-1)/2)*(F.w/cols), cy=(rI+0.5)*(F.h/rows);
+      const door=box(F.w/cols-0.03,F.h/rows-0.03,0.012,dk); door.position.set(cx,cy,F.d/2+0.006); g.add(door);
+      const hd=box(0.015,0.05,0.02,hl); hd.position.set(cx+F.w/cols*0.3,cy,F.d/2+0.016); g.add(hd); } }
+  else if(f.type==='lateralfile'){ const met=furnMat(F.c,'metal'), dk=furnMat(0x9aa0a6,'metal');   // 橫式二抽公文櫃
+    const body=box(F.w,F.h,F.d,met); body.position.y=F.h/2; g.add(body);
+    for(let r=0;r<2;r++){ const dy=0.28+r*0.5; const face=box(F.w-0.04,0.42,0.012,met); face.position.set(0,dy,F.d/2+0.006); g.add(face);
+      const h=box(F.w*0.4,0.025,0.02,dk); h.position.set(0,dy+0.16,F.d/2+0.014); g.add(h); }
+    const base=box(F.w,0.05,F.d,dk); base.position.y=0.025; g.add(base); }
+  else if(f.type==='safe'){ const met=furnMat(F.c,'metal'), dk=furnMat(0x6d6f73,'metal'), gold=furnMat(0xa9925a,'metal');   // 保險箱/金庫
+    const body=box(F.w,F.h,F.d,met); body.position.y=F.h/2; g.add(body);
+    const door=box(F.w-0.08,F.h-0.08,0.02,dk); door.position.set(0,F.h/2,F.d/2-0.004); g.add(door);
+    const dial=cyl(0.05,0.05,0.03,gold,16); dial.rotation.x=Math.PI/2; dial.position.set(-F.w*0.12,F.h/2,F.d/2+0.012); g.add(dial);
+    const handle=box(0.03,0.14,0.04,gold); handle.position.set(F.w*0.18,F.h/2,F.d/2+0.02); g.add(handle); }
   else if(f.type==='drawer3'){ const body=furnMat(F.c,'metal'); const bh=F.h-0.05; const b=box(F.w,bh,F.d,body); b.position.y=0.05+bh/2; g.add(b);  // 金屬櫃身(離地放滾輪)
     for(let r=0;r<3;r++){ const hd=box(F.w*0.52,0.03,0.014,furnMat(0xb8bcc0,'metal')); hd.position.set(0,0.05+bh*(0.2+r*0.3),F.d/2+0.008); g.add(hd); }   // 抽屜把手
     [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>{ const w=cyl(0.022,0.022,0.024,furnMat(0x1f2023,'metal'),10); w.rotation.x=Math.PI/2; w.position.set(sx*(F.w/2-0.05),0.022,sz*(F.d/2-0.06)); g.add(w); }); }  // 四滾輪
