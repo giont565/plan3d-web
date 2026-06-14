@@ -112,6 +112,10 @@
           <option value="drawer3">三層櫃</option><option value="bookshelf">開放書架</option>
           <option value="whiteboard">白板</option><option value="water">飲水機</option><option value="credenza">矮櫃</option>
         </optgroup>
+        <optgroup label="屏風隔間(普立美)">
+          <option value="partL">低屏風</option><option value="partM">中屏風</option><option value="partH">高布隔間</option>
+          <option value="partGL">玻璃布隔間</option><option value="partFG">全玻璃隔間</option><option value="cpost">走線柱</option>
+        </optgroup>
         <optgroup label="沙發桌椅">
           <option value="sectional">轉角沙發</option><option value="armchair">單人沙發</option>
           <option value="round">圓桌</option><option value="stool">圓凳</option>
@@ -275,6 +279,13 @@ const FURN = {
   dscreen:  {w:1.2,d:0.03,h:1.15,c:0x9aa4b0, mat:'fabric',label:'桌上屏風'},   // 工作站桌上型布屏(夾桌面)
   etable:   {w:2.0,d:1.0,h:0.74, c:0xc7a675, mat:'wood',  label:'橢圓會議桌'}, // 主管會議桌(橢圓/船形)
   wtable:   {w:1.43,d:0.72,h:0.74,c:0xc7a675, mat:'wood', label:'靠牆會議桌'}, // 長方桌身+一端半圓(D形)·左2腳+右圓端中央柱(鐵灰)
+  // ── 普立美 屏風·隔間系列（鋁框+布面+色帶；玻璃款霧玻/清玻）──
+  partL:    {w:1.2,d:0.04,h:1.0, c:0x9aa7b3, mat:'fabric', label:'低屏風'},     // 方頭布屏風 H100
+  partM:    {w:1.2,d:0.04,h:1.4, c:0x9aa7b3, mat:'fabric', label:'中屏風'},     // 方頭布屏風 H140
+  partH:    {w:1.2,d:0.05,h:1.8, c:0x9aa7b3, mat:'fabric', label:'高布隔間'},   // 高隔間 H180 全布
+  partGL:   {w:1.2,d:0.05,h:1.8, c:0x9aa7b3, mat:'fabric', label:'玻璃布隔間'}, // 上霧玻+下布(H172/H122 款)
+  partFG:   {w:1.2,d:0.05,h:1.9, c:0xcfe6ee, mat:'metal',  label:'全玻璃隔間'}, // 會議室清玻隔間
+  cpost:    {w:0.08,d:0.08,h:1.8,c:0x9aa0a6, mat:'metal',  label:'走線柱'},     // 6/8cm 走線柱/轉角柱
 };
 const DOOR_W=0.9, WIN_W=1.2, WIN_SILL=0.9, WIN_HEAD=2.2;
 function effFurn(f){ const B=FURN[f.type]; if(!B) return null;   // 每件家具的尺寸/顏色覆寫（沒設就用預設）
@@ -1365,6 +1376,38 @@ function buildPiece(f){ const F=effFurn(f); const g=new THREE.Group(); const woo
     const shaft=box(F.w,ch,F.d,con); shaft.position.y=ch/2; g.add(shaft);
     const base=box(F.w+0.05,0.12,F.d+0.05,con); base.position.y=0.06; g.add(base);
     const cap=box(F.w+0.05,0.1,F.d+0.05,con); cap.position.y=ch-0.05; g.add(cap); }
+  else if(f.type==='partL'||f.type==='partM'||f.type==='partH'){                                        // 普立美布屏風/高隔間：鋁框+布面+藍色帶
+    const panel=furnMat(F.c,'fabric'), frame=furnMat(0xc2c6cc,'metal'), band=furnMat(0x2f6f9f,'fabric');
+    const main=box(F.w-0.04,F.h-0.1,F.d,panel); main.position.y=F.h/2; g.add(main);                     // 布面主板
+    const bandY=Math.min(F.h*0.66,F.h-0.22), bandH=Math.min(0.16,F.h*0.14);
+    const bd=box(F.w-0.04,bandH,F.d+0.006,band); bd.position.y=bandY; g.add(bd);                        // 招牌橫色帶
+    [-1,1].forEach(s=>{ const v=box(0.03,F.h,F.d+0.012,frame); v.position.set(s*(F.w/2-0.015),F.h/2,0); g.add(v); });  // 左右鋁柱
+    const top=box(F.w,0.05,F.d+0.016,frame); top.position.y=F.h-0.025; g.add(top);                      // 頂蓋
+    const base=box(F.w,0.06,F.d+0.022,frame); base.position.y=0.03; g.add(base);                        // 底座
+    [-1,1].forEach(s=>{ const ft=box(0.04,0.02,0.26,frame); ft.position.set(s*(F.w/2-0.04),0.01,0); g.add(ft); }); }   // 穩定腳
+  else if(f.type==='partGL'){                                                                            // 上霧玻+下布隔間
+    const panel=furnMat(F.c,'fabric'), frame=furnMat(0xc2c6cc,'metal'), band=furnMat(0x2f6f9f,'fabric');
+    const fglass=new THREE.MeshStandardMaterial({color:0xe8f1f5,transparent:true,opacity:.4,roughness:.15});
+    const splitY=F.h*0.5;
+    const lower=box(F.w-0.04,splitY-0.04,F.d,panel); lower.position.y=splitY/2; g.add(lower);            // 下布
+    const upper=box(F.w-0.06,F.h-splitY-0.07,Math.max(0.012,F.d-0.03),fglass); upper.position.y=(splitY+F.h)/2; g.add(upper);  // 上霧玻
+    const bd=box(F.w-0.04,0.13,F.d+0.006,band); bd.position.y=splitY-0.12; g.add(bd);                    // 色帶(分隔下)
+    [-1,1].forEach(s=>{ const v=box(0.03,F.h,F.d+0.012,frame); v.position.set(s*(F.w/2-0.015),F.h/2,0); g.add(v); });
+    const top=box(F.w,0.05,F.d+0.016,frame); top.position.y=F.h-0.025; g.add(top);
+    const mid=box(F.w,0.04,F.d+0.012,frame); mid.position.y=splitY; g.add(mid);                          // 中橫框
+    const base=box(F.w,0.06,F.d+0.022,frame); base.position.y=0.03; g.add(base); }
+  else if(f.type==='partFG'){                                                                            // 全玻璃隔間(會議室清玻)
+    const frame=furnMat(0xaeb3ba,'metal');
+    const cg=new THREE.MeshStandardMaterial({color:0xcfe6ee,transparent:true,opacity:.22,roughness:.05,metalness:.1});
+    const pane=box(F.w-0.05,F.h-0.1,Math.max(0.012,F.d-0.03),cg); pane.position.y=F.h/2; g.add(pane);    // 清玻面板
+    [-1,1].forEach(s=>{ const v=box(0.035,F.h,F.d,frame); v.position.set(s*(F.w/2-0.0175),F.h/2,0); g.add(v); });
+    const top=box(F.w,0.05,F.d+0.012,frame); top.position.y=F.h-0.025; g.add(top);
+    const base=box(F.w,0.06,F.d+0.016,frame); base.position.y=0.03; g.add(base); }
+  else if(f.type==='cpost'){                                                                             // 走線柱/轉角柱(6/8cm)
+    const met=furnMat(0xb0b5bb,'metal'), dk=furnMat(0x70747a,'metal');
+    const post=box(F.w,F.h-0.05,F.d,met); post.position.y=(F.h-0.05)/2+0.03; g.add(post);                // 方柱
+    const cap=box(F.w+0.012,0.03,F.d+0.012,dk); cap.position.y=F.h-0.015; g.add(cap);                    // 頂帽
+    const base=box(F.w+0.06,0.04,F.d+0.06,dk); base.position.y=0.02; g.add(base); }                      // 底盤
   else if(f.type==='gpart'){ const frame=furnMat(0xb9bdc2,'metal');                                    // 玻璃隔屏：鋁框+霧玻(普立美玻璃隔間系列)
     const fglass=new THREE.MeshStandardMaterial({color:0xe8f1f5,transparent:true,opacity:.38,roughness:.15,metalness:.05});
     const pane=box(F.w-0.07,F.h-0.22,Math.max(0.012,F.d-0.04),fglass); pane.position.y=F.h/2+0.03; g.add(pane);   // 霧玻面板
