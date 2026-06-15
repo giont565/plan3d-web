@@ -122,7 +122,7 @@
           <option value="cabinet">檔案櫃</option><option value="rack">機櫃</option>
           <option value="printer">事務機</option><option value="screen">屏風</option>
           <option value="gpart">玻璃隔屏</option><option value="dscreen">桌上屏風</option><option value="etable">橢圓會議桌</option><option value="wtable">靠牆會議桌</option>
-          <option value="column">柱</option>
+          <option value="column">柱</option><option value="stair">樓梯</option>
           <option value="sofa">沙發</option><option value="plant">盆栽</option>
           <option value="ldesk">L型辦公桌</option><option value="rdesk">回桌</option><option value="reception">接待櫃台</option>
           <option value="drawer3">三層櫃</option><option value="bookshelf">開放書架</option>
@@ -319,6 +319,7 @@ const FURN = {
   water:    {w:0.36,d:0.36,h:1.1,c:0xeef2f3, mat:'plaster',label:'飲水機'},
   credenza: {w:1.6,d:0.45,h:0.75,c:0xcdbfa6, mat:'wood',  label:'矮櫃'},
   column:   {w:0.6,d:0.6,h:2.8, c:0xcfccc4, mat:'plaster',label:'柱'},        // 結構柱：3D 跟著牆高、像牆一樣頂到天花
+  stair:    {w:1.2,d:2.6,h:2.8, c:0xb8b3a8, mat:'plaster',label:'樓梯'},      // 結構樓梯：3D 階梯(踏面沿 d 方向上升)、跟牆同結構層
   schair:   {w:0.5,d:0.5,h:0.5, c:0x3a3d42, mat:'fabric', label:'椅'},        // 輕量椅(自動辨識批量用·3 零件不卡 3D·對稱無朝向)
   // 普立美型錄參考款（2026-06-11）
   gpart:    {w:1.2,d:0.06,h:1.8, c:0xd7e4ea, mat:'metal', label:'玻璃隔屏'},   // 2.5cm玻璃隔間系列：鋁框+霧玻
@@ -696,7 +697,7 @@ let furnClip=null;                      // Ctrl+C 剪貼簿：{cx,cy,furn:[...],
 let activeLayer='all';                  // 圖層：'all' 全部 / 'struct' 結構(牆+柱) / 'furn' 家具
 let editDrag=null;                      // 拖拉調大小：{kind:'resize',i,...} 家具角點 / {kind:'wallpt',i,end} 牆端點
 let editHandles=[];                     // render2d 算出的可拖控制點（螢幕座標）→ mousedown 命中測試
-function isStruct(f){ return !!f && f.type==='column'; }                                  // 柱＝結構層（跟牆同層）
+function isStruct(f){ return !!f && (f.type==='column'||f.type==='stair'); }               // 柱/樓梯＝結構層（跟牆同層）
 function furnLocked(f){ if(activeLayer==='struct') return !isStruct(f); if(activeLayer==='furn') return isStruct(f); return false; }
 function wallLocked(){ return activeLayer==='furn'; }                                     // 家具層時牆/柱鎖住
 // ── 群組變換：把框選的家具+牆當一個剛體，繞共同中心旋轉/縮放/移動 ──
@@ -764,7 +765,13 @@ function render2d(){ const w=c2d.width,h=c2d.height; ctx.clearRect(0,0,w,h);
     ctx.save();ctx.globalAlpha=furnLocked(f)?0.3:1;ctx.translate(px,py);ctx.rotate(f.rot||0);
     ctx.fillStyle='#'+F.c.toString(16).padStart(6,'0')+'cc';
     ctx.strokeStyle=selFurn.has(i)?'#c9a35b':'#00000066'; ctx.lineWidth=selFurn.has(i)?3:1.5; ctx.lineJoin='round';
-    ctx.save(); if(f.mirror) ctx.scale(-1,1); const lp=furnPath2D(ctx,f,F); ctx.fill(); ctx.stroke(); ctx.restore();
+    ctx.save(); if(f.mirror) ctx.scale(-1,1); const lp=furnPath2D(ctx,f,F); ctx.fill(); ctx.stroke();
+    if(f.type==='stair'){ const hw=F.w*view.ppm/2, hd=F.d*view.ppm/2, n=Math.max(5,Math.round(F.d/0.28));   // 樓梯：踏面橫線 + 上行箭頭
+      ctx.strokeStyle='#00000077'; ctx.lineWidth=1;
+      for(let i=1;i<n;i++){ const yy=-hd+i*(2*hd/n); ctx.beginPath(); ctx.moveTo(-hw,yy); ctx.lineTo(hw,yy); ctx.stroke(); }
+      ctx.strokeStyle='#c9a35b'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(0,hd*0.78); ctx.lineTo(0,-hd*0.7);
+      ctx.lineTo(-hw*0.18,-hd*0.45); ctx.moveTo(0,-hd*0.7); ctx.lineTo(hw*0.18,-hd*0.45); ctx.stroke(); }
+    ctx.restore();
     if(showLabels){ const lx=f.mirror?-lp.x:lp.x; ctx.font='600 10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
       const tw=ctx.measureText(F.label).width; ctx.fillStyle='rgba(26,28,32,0.7)'; ctx.beginPath(); ctx.roundRect(lx-tw/2-4,lp.y-8,tw+8,16,5); ctx.fill();
       ctx.fillStyle='#e9edf1'; ctx.fillText(F.label,lx,lp.y);} ctx.restore(); });
@@ -1216,6 +1223,7 @@ async function autoFurn(){   // 自動認工位家具：同 autoTrace 的裁切/
     pushHistory();
     r.desks.forEach(d=>{ plan.furn.push({type:'desk', x:ox+(cx0+d[0])*sx, y:oy+(cy0+d[1])*sx, w:d[2], d:d[3], rot:d[4]*Math.PI/180}); });
     (r.cols||[]).forEach(c=>{ plan.furn.push({type:'column', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx, w:c[2], d:c[3]}); });
+    (r.stairs||[]).forEach(c=>{ plan.furn.push({type:'stair', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx, w:c[2], d:c[3]}); });
     (r.chairs||[]).forEach(c=>{ plan.furn.push({type:'schair', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx}); });
     window.__lastDetect={ mpp:sx,   // 機器原始輸出(世界座標·公尺尺寸)→「回饋標注」時跟修正後真值比對打分
       desk:r.desks.map(d=>({x:ox+(cx0+d[0])*sx, y:oy+(cy0+d[1])*sx, w:d[2], h:d[3]})),
@@ -1224,7 +1232,7 @@ async function autoFurn(){   // 自動認工位家具：同 autoTrace 的裁切/
     underlay.opacity=Math.min(underlay.opacity,0.3);
     const opEl=document.getElementById('ulOpacity'); if(opEl) opEl.value=underlay.opacity;
     rebuildFurn(); render2d();
-    document.getElementById('hint').textContent='自動認出 '+r.desks.length+' 張桌'+((r.chairs&&r.chairs.length)?('、'+r.chairs.length+' 張椅'):'')+((r.cols&&r.cols.length)?('、'+r.cols.length+' 根柱'):'')+(cropRect?'（只認框內）':'')+(r.lowres?'。⚠️ 底圖解析度偏低、精度受限，建議重新匯入 PDF（新版轉圖更清晰）':'。誤認的用框選刪、漏的點放補，Ctrl+Z 復原');
+    document.getElementById('hint').textContent='自動認出 '+r.desks.length+' 張桌'+((r.chairs&&r.chairs.length)?('、'+r.chairs.length+' 張椅'):'')+((r.cols&&r.cols.length)?('、'+r.cols.length+' 根柱'):'')+((r.stairs&&r.stairs.length)?('、'+r.stairs.length+' 座樓梯'):'')+(cropRect?'（只認框內）':'')+(r.lowres?'。⚠️ 底圖解析度偏低、精度受限，建議重新匯入 PDF（新版轉圖更清晰）':'。誤認的用框選刪、漏的點放補，Ctrl+Z 復原');
   }catch(e){ alert('自動家具失敗：'+e.message); }
   btn.textContent=old; btn.style.opacity=1;
 }
@@ -1624,6 +1632,10 @@ function buildPiece(f){ const F=effFurn(f); const g=new THREE.Group(); const woo
     const seat=cyl(F.w*0.42,F.w*0.42,0.08,fab,14); seat.position.y=0.46; g.add(seat);
     const post=cyl(0.03,0.045,0.36,met,10); post.position.y=0.26; g.add(post);
     const base=cyl(F.w*0.36,F.w*0.36,0.04,met,12); base.position.y=0.04; g.add(base); }
+  else if(f.type==='stair'){ const con=furnMat(F.c,'plaster'), rail=furnMat(0x8f9398,'metal');          // 結構樓梯：實心階梯沿 d 方向上升至牆高
+    const TR=(f.h!=null)?F.h:(plan.wallH||2.8), N=Math.max(6,Math.round(TR/0.18)), rh=TR/N, td=F.d/N;
+    for(let i=0;i<N;i++){ const st=box(F.w,(i+1)*rh,td,con); st.position.set(0,(i+1)*rh/2,-F.d/2+(i+0.5)*td); g.add(st); }   // 每階＝填到該階高的方塊
+    [-1,1].forEach(s=>{ const hr=cyl(0.025,0.025,F.d*1.02,rail,8); hr.rotation.x=Math.PI/2; hr.position.set(s*(F.w/2-0.04),TR*0.55,0); hr.rotation.z=0; g.add(hr); }); }  // 兩側扶手(近似斜桿)
   else if(f.type==='column'){ const con=furnMat(F.c,'plaster');                                        // 結構柱：高度跟牆走(像牆面的建築元件)、柱腳柱帽微凸
     const ch=(f.h!=null)?F.h:(plan.wallH||2.8);
     const shaft=box(F.w,ch,F.d,con); shaft.position.y=ch/2; g.add(shaft);
