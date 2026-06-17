@@ -133,7 +133,6 @@
           <option value="cabinet">檔案櫃</option><option value="rack">機櫃</option>
           <option value="printer">事務機</option><option value="screen">屏風</option>
           <option value="gpart">玻璃隔屏</option><option value="dscreen">桌上屏風</option><option value="etable">橢圓會議桌</option><option value="wtable">靠牆會議桌</option>
-          <option value="column">柱</option><option value="stair">樓梯</option>
           <option value="sofa">沙發</option><option value="plant">盆栽</option>
           <option value="ldesk">L型辦公桌</option><option value="rdesk">回桌</option><option value="reception">接待櫃台</option>
           <option value="drawer3">三層櫃</option><option value="bookshelf">開放書架</option>
@@ -204,6 +203,7 @@
       <label class="fld">大小<input id="ulScale" type="range" min="0.15" max="6" step="0.05" value="1" style="width:90px"></label>
       <div class="tool" id="ulMove">移動底圖</div>
       <div class="tool" id="ulCalib">校正比例</div>
+      <div class="tool" id="ulAlignBtn" title="兩點把底圖對齊到已畫好的配置（平移＋縮放）">兩點對齊</div>
       <div class="tool" id="ulCrop">框選範圍</div>
       <label class="fld" title="往右＝只保留越長的主結構牆，濾掉家具/隔間細線。密集樓層往右拉">簡化<input id="ulSimplify" type="range" min="1" max="4.5" step="0.1" value="1.9" style="width:96px"><span id="ulSimVal" style="min-width:26px;display:inline-block">1.9</span></label>
       <label class="fld" style="cursor:pointer"><input type="checkbox" id="ulPlaus" checked> 濾假牆(合理性)</label>
@@ -224,13 +224,13 @@
           <div class="tool layerb" data-layer="struct" title="只編輯結構：牆／柱／窗／門／樓梯／欄杆（家具鎖住變灰）">結構</div>
           <div class="tool layerb" data-layer="furn" title="只編輯家具（牆／柱／窗／門／樓梯／欄杆 全鎖住變灰）">家具</div>
         </div>
-        <div class="tool structadd" id="addCol" style="display:none" title="放結構柱：點一下再點圖上位置">＋柱</div>
-        <div class="tool structadd" id="addStair" style="display:none" title="放樓梯：點一下再點圖上位置">＋梯</div>
         <div class="rsep"></div>
         <div class="tool rbtn sel" data-tool="wall" title="牆"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="1"/><path d="M3.5 12h17M10 6v6M16 6v6M7 12v6M13 12v6"/></svg></div>
         <div class="tool rbtn" data-tool="door" title="門"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 20h12"/><path d="M9 20V6l7-2v16"/><circle cx="13.6" cy="12" r="0.9" fill="currentColor" stroke="none"/></svg></div>
         <div class="tool rbtn" data-tool="window" title="窗"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M12 4v16M4 12h16"/></svg></div>
         <div class="tool rbtn" data-tool="rail" title="欄杆"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18M3 11h18M6.5 11v7M12 11v7M17.5 11v7"/></svg></div>
+        <div class="tool rbtn" data-tool="column" title="柱"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/><rect x="9.7" y="9.7" width="4.6" height="4.6" rx="1" fill="currentColor" stroke="none"/></svg></div>
+        <div class="tool rbtn" data-tool="stair" title="樓梯"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20v-3h4v-3h4v-3h4v-3h4"/></svg></div>
         <div class="rsep"></div>
         <div class="tool rbtn" data-tool="furn" title="家具"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><rect x="5" y="11" width="14" height="6" rx="1"/><path d="M5 13H3.2M19 13h1.8M7 17v2M17 17v2"/></svg></div>
         <div class="tool rbtn" data-tool="tmpl" title="模板"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg></div>
@@ -733,7 +733,7 @@ let tool='wall', pending=null, drag=null;
 let selFurn=new Set(), furnDrag=null, spaceDown=false, drawShift=false;   // 家具多選 / 框選 / 空白鍵平移 / 直角鎖
 let underlay=null;             // {img,x,y,scale,base,opacity}
 let ulKey=null;                // 底圖識別碼（檔名+大小）→ 記住位點與比例尺
-let ulMode=false, ulCalib=null, cropMode=false, cropRect=null, cropDrag=false;
+let ulMode=false, ulCalib=null, ulAlign=null, cropMode=false, cropRect=null, cropDrag=false;
 let mouseW=null, fitted=false;
 let selWalls=new Set(), selDrag=null;   // 框選/點選要刪的牆
 let seatDrag=null;                      // 排座：框選要自動鋪工位的區域
@@ -878,6 +878,9 @@ function render2d(){ const w=c2d.width,h=c2d.height; ctx.clearRect(0,0,w,h);
       ctx.fillStyle=r.reach?'#e9edf1':'#ff8a8a'; ctx.font='600 10px system-ui'; ctx.fillText(tag,px,py+rad+11); });
     ctx.textAlign='start'; ctx.textBaseline='alphabetic'; }
   if(ulCalib&&ulCalib.pts.length){ ulCalib.pts.forEach(p=>{const[sx,sy]=W2S(p[0],p[1]);ctx.fillStyle='#5ec8e0';ctx.beginPath();ctx.arc(sx,sy,5,0,7);ctx.fill();}); }
+  if(ulAlign&&ulAlign.pts.length){ for(let i=0;i+1<ulAlign.pts.length;i+=2){ const a=W2S(ulAlign.pts[i][0],ulAlign.pts[i][1]),b=W2S(ulAlign.pts[i+1][0],ulAlign.pts[i+1][1]); ctx.strokeStyle='#c9a35b99';ctx.setLineDash([4,3]);ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();ctx.setLineDash([]); }
+    ulAlign.pts.forEach((p,i)=>{ const [sx,sy]=W2S(p[0],p[1]); ctx.fillStyle=(i%2===0)?'#5ec8e0':'#c9a35b'; ctx.beginPath();ctx.arc(sx,sy,5,0,7);ctx.fill();
+      ctx.fillStyle='#e9edf1';ctx.font='10px sans-serif';ctx.fillText((i%2===0?'底':'配')+(Math.floor(i/2)+1),sx+7,sy-5); }); }
   if(cropRect){ const [ax,ay]=W2S(Math.min(cropRect.x1,cropRect.x2),Math.min(cropRect.y1,cropRect.y2));
     const [bx,by]=W2S(Math.max(cropRect.x1,cropRect.x2),Math.max(cropRect.y1,cropRect.y2));
     ctx.strokeStyle='#2ec4e0'; ctx.lineWidth=2; ctx.setLineDash([8,5]); ctx.strokeRect(ax,ay,bx-ax,by-ay); ctx.setLineDash([]);
@@ -1018,6 +1021,9 @@ function dimLabel(px,py,text,col){ ctx.save(); ctx.font='600 11px system-ui'; ct
 c2d.addEventListener('mousedown',e=>{
   if(e.button===2||e.button===1||(e.button===0&&spaceDown)){ e.preventDefault(); drag={kind:'pan',sx:e.clientX,sy:e.clientY,ox:view.ox,oy:view.oy}; return; }
   const [x,y]=evtW(e);
+  if(ulAlign){ const isCfg=(ulAlign.pts.length%2===1); ulAlign.pts.push(isCfg?snapPt(x,y):[snap(x),snap(y)]); const n=ulAlign.pts.length;   // 偶數步=點底圖、奇數步=點配置(吸附牆角)
+    const HA=['','對齊②：點「配置」上對應的位置（會吸附牆角／柱中心）','對齊③：再點「底圖」上第二個已知點','對齊④：點「配置」上對應第二個點'];
+    if(n<4) document.getElementById('hint').textContent=HA[n]; if(n===4) doAlignUL(); render2d(); return; }
   if(ulCalib){ ulCalib.pts.push([snap(x),snap(y)]); if(ulCalib.pts.length===2) doCalib(); render2d(); return; }
   if(cropMode){ cropDrag=true; cropRect={x1:x,y1:y,x2:x,y2:y}; render2d(); return; }
   if(ulMode){ if(underlay) drag={kind:'ul',dx:x-underlay.x,dy:y-underlay.y}; return; }
@@ -1027,11 +1033,11 @@ c2d.addEventListener('mousedown',e=>{
     else { pushHistory(); const nw={x1:pending[0],y1:pending[1],x2:p[0],y2:p[1]}; if(tool==='rail') nw.h=1.0; plan.walls.push(nw); pending=p; rebuild(); } }
   else if(tool==='door'||tool==='window'){ if(wallLocked()){ document.getElementById('hint').textContent='現在在「家具」層，門/窗是結構、鎖住了。要加先切到「結構」或「全部」'; return; } const nw=nearestWall(x,y); if(nw){ const w=plan.walls[nw.idx];
     pushHistory(); plan.openings.push({x:w.x1+nw.t*(w.x2-w.x1),y:w.y1+nw.t*(w.y2-w.y1),type:tool}); rebuild(); } }
-  else if(tool==='furn'){ const ft=document.getElementById('furnType').value, fs=(ft==='column'||ft==='stair');   // 柱/樓梯＝結構，跟著結構層走
-    if(fs&&activeLayer==='furn'){ document.getElementById('hint').textContent='柱/樓梯是結構，現在在「家具」層放不了。切到「結構」或「全部」'; return; }
-    if(!fs&&activeLayer==='struct'){ document.getElementById('hint').textContent='現在在「結構」層、家具鎖住了。要放家具先切到「家具」或「全部」'; return; }
-    pushHistory(); plan.furn.push({type:ft,x:snap(x),y:snap(y),rot:0});
+  else if(tool==='furn'){ if(activeLayer==='struct'){ document.getElementById('hint').textContent='現在在「結構」層、家具鎖住了。要放家具先切到「家具」或「全部」'; return; }
+    pushHistory(); plan.furn.push({type:document.getElementById('furnType').value,x:snap(x),y:snap(y),rot:0});
     selFurn=new Set([plan.furn.length-1]); rebuildFurn(); }
+  else if(tool==='column'||tool==='stair'){ if(activeLayer==='furn'){ document.getElementById('hint').textContent=(tool==='column'?'柱':'樓梯')+'是結構，現在在「家具」層放不了。切到「結構」或「全部」'; return; }
+    pushHistory(); plan.furn.push({type:tool,x:snap(x),y:snap(y),rot:0}); selFurn=new Set([plan.furn.length-1]); rebuildFurn(); }
   else if(tool==='tmpl'){ placeTemplate(snap(x),snap(y)); }
   else if(tool==='move'){
     const hit=hitHandle(e);                                                  // 1) 命中把手＝旋轉/縮放/拖大小
@@ -1110,7 +1116,7 @@ const TOOLKEYS={'1':'wall','2':'door','3':'window','4':'rail','5':'furn','6':'mo
 window.addEventListener('keydown',e=>{
   const typing=/^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement||{}).tagName||'');
   if(e.code==='Space'){ spaceDown=true; if(!typing) e.preventDefault(); }
-  if(e.key==='Escape'){ pending=null;ulCalib=null;selWalls.clear();selFurn.clear();selDrag=null;furnDrag=null;seatDrag=null;render2d();selHint(); return; }
+  if(e.key==='Escape'){ pending=null;ulCalib=null;ulAlign=null;selWalls.clear();selFurn.clear();selDrag=null;furnDrag=null;seatDrag=null;render2d();selHint(); return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); if(e.shiftKey) redo(); else undo(); return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='y'||e.key==='Y')){ e.preventDefault(); redo(); return; }
   if((e.ctrlKey||e.metaKey)&&(e.key==='d'||e.key==='D')){ e.preventDefault();
@@ -1149,6 +1155,7 @@ document.querySelectorAll('.tool[data-tool]').forEach(t=>t.onclick=()=>{ tool=t.
   updateToolOpts();
   const H={wall:'牆：點起點→點終點（按住 Shift＝直角鎖、畫筆直橫/直牆；會接續，Esc 結束）',door:'門：點在某面牆上加門洞',window:'窗：點在某面牆上加窗',
     rail:'欄杆：點起點→點終點，畫出矮欄杆（開放陽台/露台邊用）',
+    column:'柱：點一下放一根結構柱（結構元件，家具層放不了，切到結構/全部）',stair:'樓梯：點一下放樓梯（結構元件，家具層放不了，切到結構/全部）',
     furn:'家具：選種類點一下放上去（數字 1~9 切工具）',move:'選取/移動：點或框選家具(可多選)→拖曳移動、R 轉向、Ctrl+C 複製→滑鼠移到位 Ctrl+V 蓋章(可連蓋)、Ctrl+D 原地複製、Delete 刪除',erase:'刪除：點牆/門窗/家具移除',
     selwall:'框選刪牆：拖一個框選取要刪的牆（變紅），或點單一面牆，再按 Delete 刪除',setlen:'設牆長校正：點一面牆，輸入它的真實長度（公尺），整張圖等比例縮放',
     tmpl:'模板：選一種標準配置點一下放上去（工程師＝家具組；副理/秘書/部經＝含牆+門整間），放完已全選可整組拖動微調',
@@ -1265,7 +1272,8 @@ function restoreCalib(){ if(!underlay||!ulKey) return false; try{ const s=localS
 document.getElementById('ulOpacity').oninput=e=>{ if(underlay){underlay.opacity=parseFloat(e.target.value);render2d();saveCalib();} };
 document.getElementById('ulScale').oninput=e=>{ if(underlay){underlay.scale=underlay.base*parseFloat(e.target.value);render2d();saveCalib();} };
 document.getElementById('ulMove').onclick=()=>setUl(!ulMode);
-document.getElementById('ulCalib').onclick=()=>{ ulCalib={pts:[]}; cropMode=false; document.getElementById('ulCrop').classList.remove('act'); document.getElementById('hint').textContent='校正：在底圖上點兩個你知道實際距離的點（例如一面 5m 的牆的兩端）'; };
+document.getElementById('ulCalib').onclick=()=>{ ulCalib={pts:[]}; ulAlign=null; cropMode=false; document.getElementById('ulCrop').classList.remove('act'); document.getElementById('hint').textContent='校正：在底圖上點兩個你知道實際距離的點（例如一面 5m 的牆的兩端）'; };
+document.getElementById('ulAlignBtn').onclick=()=>{ if(!underlay){ document.getElementById('hint').textContent='還沒有底圖。先按「匯入底圖」載入平面圖，再用兩點對齊'; return; } ulAlign={pts:[]}; ulCalib=null; cropMode=false; const cb=document.getElementById('ulCrop'); if(cb)cb.classList.remove('act'); document.getElementById('hint').textContent='對齊①：點「底圖」上一個已知點（例如某根柱中心、牆角）'; };
 document.getElementById('ulCrop').onclick=()=>{ cropMode=!cropMode; setUl(false); ulCalib=null;
   document.getElementById('ulCrop').classList.toggle('act',cropMode);
   if(cropMode) document.getElementById('hint').textContent='框選範圍：在底圖上拖一個框，把純平面圖那塊框起來（排除右邊圖框/標題欄），再按「自動描牆」';
@@ -1416,14 +1424,8 @@ document.querySelectorAll('.tool[data-layer]').forEach(b=>b.onclick=()=>{ active
   if(wallLocked()) selWalls.clear();
   editDrag=null;
   document.querySelectorAll('.structadd').forEach(x=>x.style.display=(activeLayer==='struct')?'':'none');   // 結構層才顯 ＋柱/＋樓梯
-  const H={all:'圖層：全部可編輯（結構＋家具）',struct:'圖層→結構：可編輯 牆／柱／窗／門／樓梯／欄杆，家具鎖成灰幽靈。放柱/樓梯按左側工具列上方的「＋柱」「＋梯」',furn:'圖層→家具：只編輯家具，牆／柱／窗／門／樓梯／欄杆 全鎖成灰幽靈（放家具不會誤動結構）'};
+  const H={all:'圖層：全部可編輯（結構＋家具）',struct:'圖層→結構：可編輯 牆／柱／窗／門／樓梯／欄杆（都在左側工具列），家具鎖成灰幽靈',furn:'圖層→家具：只編輯家具，牆／柱／窗／門／樓梯／欄杆 全鎖成灰幽靈（放家具不會誤動結構）'};
   document.getElementById('hint').textContent=H[activeLayer]; render2d(); });
-function placeStructTool(type){ const sel=document.getElementById('furnType'); sel.value=type;   // ＋柱/＋樓梯：設型別+進放置模式
-  const fp=document.getElementById('furnPick'); if(fp){ const o=sel.options[sel.selectedIndex]; fp.textContent=(o?o.textContent:type)+' ▾'; }
-  const fb=document.querySelector('.tool[data-tool="furn"]'); if(fb)fb.click();
-  document.getElementById('hint').textContent=(type==='column'?'放柱':'放樓梯')+'：點圖上要放的位置（在結構層、不會誤動家具）'; }
-document.getElementById('addCol').onclick=()=>placeStructTool('column');
-document.getElementById('addStair').onclick=()=>placeStructTool('stair');
 pdfBackendAlive().then(ok=>{ if(!ok){ ['ulAuto','ulFurn','ulGt'].forEach(id=>{ const b=document.getElementById(id);   // 純網頁版：辨識鈕變灰示意(點了有完整說明)
   if(b){ b.style.opacity=.35; b.title='網頁版沒有辨識後端：請用本機版(8808)或 Render 雲端版'; } }); } });
 function doCalib(){ const [p1,p2]=ulCalib.pts; const d=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]);
@@ -1432,6 +1434,14 @@ function doCalib(){ const [p1,p2]=ulCalib.pts; const d=Math.hypot(p2[0]-p1[0],p2
     underlay.x=p1[0]+(underlay.x-p1[0])*f; underlay.y=p1[1]+(underlay.y-p1[1])*f;
     setUl(false);   // 校正完關掉移動底圖模式→滾輪改成縮放畫面、不會再把底圖縮跑
     document.getElementById('hint').textContent='已校正比例＋已記住。滾輪＝縮放畫面(底圖鎖住跟著一起縮)；要再調底圖位置按「移動底圖」'; saveCalib(); } render2d(); }
+function doAlignUL(){ const [u1,p1,u2,p2]=ulAlign.pts; ulAlign=null;   // 兩點對齊：底圖點u1→配置點p1、u2→p2，求平移＋等比例縮放（底圖不能旋轉）
+  if(!underlay){ render2d(); return; }
+  const du=Math.hypot(u2[0]-u1[0],u2[1]-u1[1]), dp=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]);
+  if(du<1e-4||dp<1e-4){ document.getElementById('hint').textContent='兩個點挑太近、對不出來，再按「兩點對齊」重來一次'; render2d(); return; }
+  const f=dp/du; underlay.base*=f; underlay.scale*=f;
+  underlay.x=p1[0]+(underlay.x-u1[0])*f; underlay.y=p1[1]+(underlay.y-u1[1])*f;   // 讓 u1 對到 p1、整體縮放 f 倍
+  underlay.calib=true; setUl(false);
+  document.getElementById('hint').textContent='已用兩點把底圖對齊到配置（平移＋縮放）。底圖無法旋轉，若有歪斜按「移動底圖」再微調'; saveCalib(); render2d(); }
 
 function fit2d(){ if(c2d.width<50) return; const pts=[]; plan.walls.forEach(w=>{pts.push([w.x1,w.y1],[w.x2,w.y2]);}); plan.furn.forEach(f=>pts.push([f.x,f.y]));
   if(underlay&&underlay.img){ const uw=underlay.img.width*underlay.scale, uh=underlay.img.height*underlay.scale; pts.push([underlay.x,underlay.y],[underlay.x+uw,underlay.y+uh]); }
@@ -2081,6 +2091,7 @@ window.__dbg={ plan:()=>plan, size:(w,h)=>{c2d.width=w;c2d.height=h;fitted=false
     res({set:!!underlay,w:im.width,h:im.height,scale:underlay.scale,opacity:underlay.opacity}); }; im.onerror=()=>res({err:'load'}); im.src=url; }),
   ulInfo:()=>underlay?{x:underlay.x,y:underlay.y,scale:underlay.scale,opacity:underlay.opacity}:null,
   ulSet:(o)=>{ if(!underlay) return null; Object.assign(underlay,o); render2d(); return {x:underlay.x,y:underlay.y,scale:underlay.scale}; },
+  alignUL:(u1,p1,u2,p2)=>{ ulAlign={pts:[u1,p1,u2,p2]}; doAlignUL(); return underlay?{x:+underlay.x.toFixed(3),y:+underlay.y.toFixed(3),scale:+underlay.scale.toFixed(4)}:null; },
   gtTest:()=>saveGt(true),
   backendSet:(v)=>{ _pdfBackend=v; return _pdfBackend; }, backendGet:async()=>await pdfBackendAlive(),
   setLayer:(L)=>{ activeLayer=L; const b=document.querySelector('.tool[data-layer="'+L+'"]'); if(b)b.click(); return activeLayer; },
