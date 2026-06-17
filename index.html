@@ -704,6 +704,7 @@ let furnClip=null;                      // Ctrl+C 剪貼簿：{cx,cy,furn:[...],
 let activeLayer='all';                  // 圖層：'all' 全部 / 'struct' 結構(牆+柱) / 'furn' 家具
 let editDrag=null;                      // 拖拉調大小：{kind:'resize',i,...} 家具角點 / {kind:'wallpt',i,end} 牆端點
 let editHandles=[];                     // render2d 算出的可拖控制點（螢幕座標）→ mousedown 命中測試
+let dragGuides=null;                     // 拖單件家具時的對齊輔助線＋間距 {v:[...],h:[...]}（mouseup 清掉）
 function isStruct(f){ return !!f && (f.type==='column'||f.type==='stair'); }               // 柱/樓梯＝結構層（跟牆同層）
 function furnLocked(f){ if(activeLayer==='struct') return !isStruct(f); if(activeLayer==='furn') return isStruct(f); return false; }
 function wallLocked(){ return activeLayer==='furn'; }                                     // 家具層時牆/柱鎖住
@@ -849,6 +850,14 @@ function render2d(){ const w=c2d.width,h=c2d.height; ctx.clearRect(0,0,w,h);
         editHandles.push({kind:'wend',i,end:pt[2],sx:hx,sy:hy});
         ctx.fillStyle='#c9a35b';ctx.strokeStyle='#1a1c20';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(hx,hy,6,0,7);ctx.fill();ctx.stroke(); }); } }
   }
+  if(dragGuides){ ctx.save(); ctx.lineWidth=1; ctx.setLineDash([5,4]); ctx.strokeStyle='#ff36c0';   // 對齊輔助線（拖家具對齊鄰居/牆時出現）＋兩物間距
+    dragGuides.v.forEach(g=>{ const a=W2S(g.gx,g.ya),b=W2S(g.gx,g.yb); ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+      if(g.gpos!=null&&g.gap>0.03){ const p=W2S(g.gx,g.gpos); dimLabel(p[0],p[1],g.gap.toFixed(2)+' m','#ffa3e6'); } });
+    dragGuides.h.forEach(g=>{ const a=W2S(g.xa,g.gy),b=W2S(g.xb,g.gy); ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+      if(g.gpos!=null&&g.gap>0.03){ const p=W2S(g.gpos,g.gy); dimLabel(p[0],p[1],g.gap.toFixed(2)+' m','#ffa3e6'); } });
+    ctx.restore(); }
+  if(editDrag&&editDrag.kind==='resize'){ const f=plan.furn[editDrag.i]; const F=f&&effFurn(f); if(F){ const p=W2S(f.x,f.y); dimLabel(p[0],p[1],F.w.toFixed(2)+' × '+F.d.toFixed(2)+' m','#c9a35b'); } }   // 拖角點改大小：即時顯示寬×深
+  else if(editDrag&&editDrag.kind==='wallpt'){ const wl=plan.walls[editDrag.i]; if(wl){ const L=Math.hypot(wl.x2-wl.x1,wl.y2-wl.y1); const p=W2S((wl.x1+wl.x2)/2,(wl.y1+wl.y2)/2); dimLabel(p[0],p[1]-14,L.toFixed(2)+' m','#c9a35b'); } }   // 拖牆端點：即時顯示牆長
   updateFurnProp();
 }
 function hitHandle(e){ if(tool!=='move'||!editHandles.length) return null; const r=c2d.getBoundingClientRect(); const mx=e.clientX-r.left,my=e.clientY-r.top;
@@ -868,7 +877,7 @@ function segSeg(ax,ay,bx,by,cx,cy,dx,dy){ const d=(bx-ax)*(dy-cy)-(by-ay)*(dx-cx
 function wallInRect(w,r){ if(ptInRect(w.x1,w.y1,r)||ptInRect(w.x2,w.y2,r))return true;
   const X1=Math.min(r.x1,r.x2),Y1=Math.min(r.y1,r.y2),X2=Math.max(r.x1,r.x2),Y2=Math.max(r.y1,r.y2);
   return segSeg(w.x1,w.y1,w.x2,w.y2,X1,Y1,X2,Y1)||segSeg(w.x1,w.y1,w.x2,w.y2,X2,Y1,X2,Y2)||segSeg(w.x1,w.y1,w.x2,w.y2,X2,Y2,X1,Y2)||segSeg(w.x1,w.y1,w.x2,w.y2,X1,Y2,X1,Y1); }
-function clearSel(){ selFurn.clear(); selWalls.clear(); selDrag=null; furnDrag=null; }   // 換 plan 時清掉舊選取，避免索引變舊崩掉
+function clearSel(){ selFurn.clear(); selWalls.clear(); selDrag=null; furnDrag=null; dragGuides=null; }   // 換 plan 時清掉舊選取，避免索引變舊崩掉
 function selHint(){ const el=document.getElementById('hint'); if(!el||tool!=='selwall')return;
   el.textContent = selWalls.size ? ('已選 '+selWalls.size+' 道牆 · 按 Delete 刪除 · Esc 取消 · 可繼續框/點加選')
     : '框選刪牆：拖一個框選取要刪的牆（變紅），或點單一面牆，再按 Delete 刪除'; }
@@ -895,6 +904,40 @@ function snapFurn(fi,nx,ny){ const f=plan.furn[fi], F=effFurn(f); if(!F) return 
   let bdx=TH,dx=0; [nx,nx-sw/2,nx+sw/2].forEach(xe=>xs.forEach(t=>{ if(Math.abs(t-xe)<bdx){bdx=Math.abs(t-xe);dx=t-xe;} }));
   let bdy=TH,dy=0; [ny,ny-sd/2,ny+sd/2].forEach(ye=>ys.forEach(t=>{ if(Math.abs(t-ye)<bdy){bdy=Math.abs(t-ye);dy=t-ye;} }));
   return [nx+dx,ny+dy]; }
+function furnAABB(f){ const F=effFurn(f); if(!F) return null; const c=Math.cos(f.rot||0),s=Math.sin(f.rot||0);   // 家具旋轉後的外接正框（給對齊輔助線用）
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(sg=>{ const lx=sg[0]*F.w/2,ly=sg[1]*F.d/2,wx=f.x+lx*c-ly*s,wy=f.y+lx*s+ly*c;
+    if(wx<x0)x0=wx; if(wx>x1)x1=wx; if(wy<y0)y0=wy; if(wy>y1)y1=wy; });
+  return {x0,y0,x1,y1,cx:f.x,cy:f.y}; }
+function dedupeGuides(arr,key,a,b){ const m=new Map();   // 同一條線（同座標）合併成一條，跨度取聯集、間距取最近的鄰居
+  arr.forEach(g=>{ const k=Math.round(g[key]/0.02)*0.02; const e=m.get(k);
+    if(!e){ m.set(k,{...g}); }
+    else { e[a]=Math.min(e[a],g[a]); e[b]=Math.max(e[b],g[b]);
+      if(g.gap>0&&(e.gpos==null||g.gap<e.gap)){ e.gap=g.gap; e.gpos=g.gpos; } } });
+  return [...m.values()]; }
+function computeDragGuides(fi){ const f=plan.furn[fi]; if(!f) return null; const D=furnAABB(f); if(!D) return null;   // 拖第 fi 件家具時，找出與它「邊/中心對齊」的鄰居→輔助線＋兩物之間的間距
+  const EPS=0.03, vRaw=[], hRaw=[];                                    // 對齊容差 3cm（snap 後對齊處差≈0）
+  const dXs=[D.x0,D.cx,D.x1], dYs=[D.y0,D.cy,D.y1];                    // 被拖件的 左/中/右 與 上/中/下
+  plan.furn.forEach((o,oi)=>{ if(oi===fi||furnLocked(o)) return; const O=furnAABB(o); if(!O) return;
+    const oXs=[O.x0,(O.x0+O.x1)/2,O.x1], oYs=[O.y0,(O.y0+O.y1)/2,O.y1];
+    dXs.forEach(dx=>oXs.forEach(ox=>{ if(Math.abs(dx-ox)<EPS){       // 直向對齊（X 相同）→ 看上下間距
+      const gap=(D.y0>O.y1)?(D.y0-O.y1):(O.y0>D.y1)?(O.y0-D.y1):0;
+      const gpos=(D.y0>O.y1)?(D.y0+O.y1)/2:(O.y0>D.y1)?(O.y0+D.y1)/2:null;
+      vRaw.push({gx:ox,ya:Math.min(D.y0,O.y0),yb:Math.max(D.y1,O.y1),gap,gpos}); }}));
+    dYs.forEach(dy=>oYs.forEach(oy=>{ if(Math.abs(dy-oy)<EPS){       // 橫向對齊（Y 相同）→ 看左右間距
+      const gap=(D.x0>O.x1)?(D.x0-O.x1):(O.x0>D.x1)?(O.x0-D.x1):0;
+      const gpos=(D.x0>O.x1)?(D.x0+O.x1)/2:(O.x0>D.x1)?(O.x0+D.x1)/2:null;
+      hRaw.push({gy:oy,xa:Math.min(D.x0,O.x0),xb:Math.max(D.x1,O.x1),gap,gpos}); }}));
+  });
+  if(!wallLocked()) plan.walls.forEach(w=>{ [[w.x1,w.y1],[w.x2,w.y2]].forEach(p=>{ const wx=p[0],wy=p[1];   // 牆端點也當對齊基準
+    dXs.forEach(dx=>{ if(Math.abs(dx-wx)<EPS) vRaw.push({gx:wx,ya:Math.min(D.y0,wy),yb:Math.max(D.y1,wy),gap:0,gpos:null}); });
+    dYs.forEach(dy=>{ if(Math.abs(dy-wy)<EPS) hRaw.push({gy:wy,xa:Math.min(D.x0,wx),xb:Math.max(D.x1,wx),gap:0,gpos:null}); });
+  }); });
+  if(!vRaw.length&&!hRaw.length) return null;
+  return {v:dedupeGuides(vRaw,'gx','ya','yb'), h:dedupeGuides(hRaw,'gy','xa','xb')}; }
+function dimLabel(px,py,text,col){ ctx.save(); ctx.font='600 11px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';   // 畫一顆距離/尺寸小標籤
+  const tw=ctx.measureText(text).width; ctx.fillStyle='rgba(20,20,26,.82)'; ctx.beginPath(); ctx.roundRect(px-tw/2-5,py-9,tw+10,18,5); ctx.fill();
+  ctx.fillStyle=col||'#ff7ad9'; ctx.fillText(text,px,py); ctx.restore(); }
 c2d.addEventListener('mousedown',e=>{
   if(e.button===2||e.button===1||(e.button===0&&spaceDown)){ e.preventDefault(); drag={kind:'pan',sx:e.clientX,sy:e.clientY,ox:view.ox,oy:view.oy}; return; }
   const [x,y]=evtW(e);
@@ -959,8 +1002,8 @@ window.addEventListener('mousemove',e=>{ const [x,y]=evtW(e); mouseW=[x,y];
   if(furnDrag){ furnDrag.x2=x; furnDrag.y2=y; if(Math.hypot(x-furnDrag.x1,y-furnDrag.y1)>0.08) furnDrag.moved=true; render2d(); return; }
   if(drag){ if(drag.kind==='pan'){view.ox=drag.ox+(e.clientX-drag.sx);view.oy=drag.oy+(e.clientY-drag.sy);}
     else if(drag.kind==='furn'){ const ddx=x-drag.sx, ddy=y-drag.sy; const hasW=drag.walls&&drag.walls.length;
-      if(drag.items.length===1&&!hasW){ const it=drag.items[0]; const sn=snapFurn(it.i,it.ox+ddx,it.oy+ddy); plan.furn[it.i].x=sn[0]; plan.furn[it.i].y=sn[1]; rebuildFurn(); }   // 單選=自動貼邊吸附
-      else { drag.items.forEach(it=>{plan.furn[it.i].x=snap(it.ox+ddx);plan.furn[it.i].y=snap(it.oy+ddy);});
+      if(drag.items.length===1&&!hasW){ const it=drag.items[0]; const sn=snapFurn(it.i,it.ox+ddx,it.oy+ddy); plan.furn[it.i].x=sn[0]; plan.furn[it.i].y=sn[1]; rebuildFurn(); dragGuides=computeDragGuides(it.i); }   // 單選=自動貼邊吸附＋對齊輔助線
+      else { dragGuides=null; drag.items.forEach(it=>{plan.furn[it.i].x=snap(it.ox+ddx);plan.furn[it.i].y=snap(it.oy+ddy);});
         (drag.walls||[]).forEach(it=>{const w=plan.walls[it.i]; if(w){w.x1=snap(it.ax+ddx);w.y1=snap(it.ay+ddy);w.x2=snap(it.bx+ddx);w.y2=snap(it.by+ddy);}});
         if(!hasW) rebuildFurn(); } }
     else if(drag.kind==='ul'){underlay.x=x-drag.dx;underlay.y=y-drag.dy;} render2d(); }
@@ -972,7 +1015,7 @@ window.addEventListener('mouseup',()=>{ if(editDrag){ if(editDrag.kind==='wallpt
     if(selDrag.moved){ plan.walls.forEach((w,i)=>{ if(wallInRect(w,r)) selWalls.add(i); }); }
     else { const nw=nearestWall(selDrag.x1,selDrag.y1); if(nw){ selWalls.has(nw.idx)?selWalls.delete(nw.idx):selWalls.add(nw.idx); } }
     selDrag=null; selHint(); render2d(); return; }
-  if(cropDrag){ cropDrag=false; cropMode=false; const b=document.getElementById('ulCrop'); if(b)b.classList.remove('act'); c2d.style.cursor='crosshair'; document.getElementById('hint').textContent='已框選範圍：按「自動描牆」只描框內。要重框再按一次「框選範圍」'; render2d(); return; } if(drag&&drag.kind==='furn'){ if(drag.walls&&drag.walls.length) rebuild(); else rebuildFurn(); } if(drag&&drag.kind==='ul')saveCalib(); drag=null; });
+  if(cropDrag){ cropDrag=false; cropMode=false; const b=document.getElementById('ulCrop'); if(b)b.classList.remove('act'); c2d.style.cursor='crosshair'; document.getElementById('hint').textContent='已框選範圍：按「自動描牆」只描框內。要重框再按一次「框選範圍」'; render2d(); return; } if(drag&&drag.kind==='furn'){ if(drag.walls&&drag.walls.length) rebuild(); else rebuildFurn(); } if(drag&&drag.kind==='ul')saveCalib(); dragGuides=null; drag=null; });
 c2d.addEventListener('contextmenu',e=>e.preventDefault());
 c2d.addEventListener('dblclick',()=>{ fitted=false; fit2d(); fitted=true; render2d(); });   // 雙擊＝符合視窗
 c2d.addEventListener('wheel',e=>{ e.preventDefault(); const r=c2d.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
@@ -1926,6 +1969,7 @@ loop();
 window.PLAN=()=>plan;
 window.__dbg={ plan:()=>plan, size:(w,h)=>{c2d.width=w;c2d.height=h;fitted=false;fit2d();fitted=true;render2d();}, snapTest:(fi,nx,ny)=>snapFurn(fi,nx,ny),
   seatPlan:(x1,y1,x2,y2)=>seatFillPlan({x1,y1,x2,y2}), seatFill:(x1,y1,x2,y2)=>seatFillApply({x1,y1,x2,y2}),
+  guides:(fi)=>computeDragGuides(fi), aabb:(fi)=>furnAABB(plan.furn[fi]),
   drawWall:(x1,y1,x2,y2)=>{pushHistory();plan.walls.push({x1,y1,x2,y2});rebuild();return plan.walls.length;},
   pack:(k)=>{currentPack=k;packSel.value=k;applyPack();rebuild();},
   loadPlan:(o)=>{ plan=Object.assign(emptyPlan(),o); document.getElementById('wallH').value=plan.wallH||2.8; clearSel(); fitted=false; fit2d(); fitted=true; rebuild(); },
