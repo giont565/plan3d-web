@@ -220,9 +220,9 @@
     <div id="cwrap"><canvas id="c2d"></canvas>
       <div class="rail" id="rail">
         <div class="rlayer" title="圖層：要編輯哪一層">
-          <div class="tool layerb act" data-layer="all" title="全部可編輯">全部</div>
-          <div class="tool layerb" data-layer="struct" title="只編輯結構（牆＋柱），家具鎖住變淡">結構</div>
-          <div class="tool layerb" data-layer="furn" title="只編輯家具，牆／柱鎖住變淡">家具</div>
+          <div class="tool layerb act" data-layer="all" title="全部可編輯（結構＋家具）">全部</div>
+          <div class="tool layerb" data-layer="struct" title="只編輯結構：牆／柱／窗／門／樓梯／欄杆（家具鎖住變灰）">結構</div>
+          <div class="tool layerb" data-layer="furn" title="只編輯家具（牆／柱／窗／門／樓梯／欄杆 全鎖住變灰）">家具</div>
         </div>
         <div class="tool structadd" id="addCol" style="display:none" title="放結構柱：點一下再點圖上位置">＋柱</div>
         <div class="tool structadd" id="addStair" style="display:none" title="放樓梯：點一下再點圖上位置">＋梯</div>
@@ -1021,13 +1021,16 @@ c2d.addEventListener('mousedown',e=>{
   if(ulCalib){ ulCalib.pts.push([snap(x),snap(y)]); if(ulCalib.pts.length===2) doCalib(); render2d(); return; }
   if(cropMode){ cropDrag=true; cropRect={x1:x,y1:y,x2:x,y2:y}; render2d(); return; }
   if(ulMode){ if(underlay) drag={kind:'ul',dx:x-underlay.x,dy:y-underlay.y}; return; }
-  if(tool==='wall'||tool==='rail'){ let p; if(pending&&e.shiftKey){ const o=orthoLock(pending[0],pending[1],snap(x),snap(y)); p=[o[0],o[1]]; } else p=snapPt(x,y);
+  if(tool==='wall'||tool==='rail'){ if(wallLocked()){ document.getElementById('hint').textContent='現在在「家具」層，牆/欄杆是結構、鎖住了。要畫先切到「結構」或「全部」'; return; } let p; if(pending&&e.shiftKey){ const o=orthoLock(pending[0],pending[1],snap(x),snap(y)); p=[o[0],o[1]]; } else p=snapPt(x,y);
     if(!pending) pending=p;
     else if(Math.hypot(p[0]-pending[0],p[1]-pending[1])<0.05){ pending=p; render2d(); }   // 同一點＝忽略（避免雙擊產生零長牆）
     else { pushHistory(); const nw={x1:pending[0],y1:pending[1],x2:p[0],y2:p[1]}; if(tool==='rail') nw.h=1.0; plan.walls.push(nw); pending=p; rebuild(); } }
-  else if(tool==='door'||tool==='window'){ const nw=nearestWall(x,y); if(nw){ const w=plan.walls[nw.idx];
+  else if(tool==='door'||tool==='window'){ if(wallLocked()){ document.getElementById('hint').textContent='現在在「家具」層，門/窗是結構、鎖住了。要加先切到「結構」或「全部」'; return; } const nw=nearestWall(x,y); if(nw){ const w=plan.walls[nw.idx];
     pushHistory(); plan.openings.push({x:w.x1+nw.t*(w.x2-w.x1),y:w.y1+nw.t*(w.y2-w.y1),type:tool}); rebuild(); } }
-  else if(tool==='furn'){ pushHistory(); plan.furn.push({type:document.getElementById('furnType').value,x:snap(x),y:snap(y),rot:0});
+  else if(tool==='furn'){ const ft=document.getElementById('furnType').value, fs=(ft==='column'||ft==='stair');   // 柱/樓梯＝結構，跟著結構層走
+    if(fs&&activeLayer==='furn'){ document.getElementById('hint').textContent='柱/樓梯是結構，現在在「家具」層放不了。切到「結構」或「全部」'; return; }
+    if(!fs&&activeLayer==='struct'){ document.getElementById('hint').textContent='現在在「結構」層、家具鎖住了。要放家具先切到「家具」或「全部」'; return; }
+    pushHistory(); plan.furn.push({type:ft,x:snap(x),y:snap(y),rot:0});
     selFurn=new Set([plan.furn.length-1]); rebuildFurn(); }
   else if(tool==='tmpl'){ placeTemplate(snap(x),snap(y)); }
   else if(tool==='move'){
@@ -1413,7 +1416,7 @@ document.querySelectorAll('.tool[data-layer]').forEach(b=>b.onclick=()=>{ active
   if(wallLocked()) selWalls.clear();
   editDrag=null;
   document.querySelectorAll('.structadd').forEach(x=>x.style.display=(activeLayer==='struct')?'':'none');   // 結構層才顯 ＋柱/＋樓梯
-  const H={all:'圖層：全部可編輯（牆/柱/家具）',struct:'圖層→結構：編輯牆＋柱＋樓梯，家具鎖成灰幽靈。要放柱/樓梯按左側工具列上方的「＋柱」「＋梯」',furn:'圖層→家具：只編輯家具，牆＋柱＋樓梯鎖成灰幽靈（放家具不會誤動結構）'};
+  const H={all:'圖層：全部可編輯（結構＋家具）',struct:'圖層→結構：可編輯 牆／柱／窗／門／樓梯／欄杆，家具鎖成灰幽靈。放柱/樓梯按左側工具列上方的「＋柱」「＋梯」',furn:'圖層→家具：只編輯家具，牆／柱／窗／門／樓梯／欄杆 全鎖成灰幽靈（放家具不會誤動結構）'};
   document.getElementById('hint').textContent=H[activeLayer]; render2d(); });
 function placeStructTool(type){ const sel=document.getElementById('furnType'); sel.value=type;   // ＋柱/＋樓梯：設型別+進放置模式
   const fp=document.getElementById('furnPick'); if(fp){ const o=sel.options[sel.selectedIndex]; fp.textContent=(o?o.textContent:type)+' ▾'; }
