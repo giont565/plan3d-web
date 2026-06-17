@@ -73,6 +73,10 @@
   #furnProp label{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:3px}
   #furnProp input[type=number]{width:54px}
   #furnProp input[type=color]{width:30px;height:24px;padding:0;border:1px solid var(--line);border-radius:5px;background:none;cursor:pointer}
+  .afn{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--muted);cursor:pointer}
+  .afn:hover{border-color:var(--gold);color:var(--gold)}
+  .afn.dis{opacity:.3;pointer-events:none}
+  #fpAlign b{font-size:12px}
   .badge3d{position:absolute;left:12px;top:12px;display:flex;gap:6px;z-index:3;align-items:center;flex-wrap:wrap;max-width:90%}
   .badge3d .tool{background:rgba(28,28,36,.85)}
   .badge3d select{background:rgba(28,28,36,.9)}
@@ -247,6 +251,22 @@
           <span class="lsep"></span>
           <div class="tool" id="gpFlipH" title="整組水平翻轉">⇋ 水平翻</div>
           <div class="tool" id="gpFlipV" title="整組垂直翻轉">⇅ 垂直翻</div>
+        </span>
+        <span id="fpAlign" style="display:none;align-items:center;gap:4px;flex-wrap:wrap">
+          <span class="lsep"></span><b style="color:var(--gold)">對齊</b>
+          <div class="afn" data-align="left" title="靠左對齊（左邊對齊）"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M2 1.6V14.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="3.6" y="4" width="9" height="2.4" rx="0.7" fill="currentColor"/><rect x="3.6" y="9.6" width="5.4" height="2.4" rx="0.7" fill="currentColor"/></svg></div>
+          <div class="afn" data-align="hcenter" title="水平置中（左右置中對齊）"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M8 1.6V14.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="3" y="4" width="10" height="2.4" rx="0.7" fill="currentColor"/><rect x="5" y="9.6" width="6" height="2.4" rx="0.7" fill="currentColor"/></svg></div>
+          <div class="afn" data-align="right" title="靠右對齊（右邊對齊）"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M14 1.6V14.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="3.4" y="4" width="9" height="2.4" rx="0.7" fill="currentColor"/><rect x="7" y="9.6" width="5.4" height="2.4" rx="0.7" fill="currentColor"/></svg></div>
+          <div class="afn" data-align="top" title="靠上對齊（上邊對齊）"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M1.6 2H14.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="4" y="3.6" width="2.4" height="9" rx="0.7" fill="currentColor"/><rect x="9.6" y="3.6" width="2.4" height="5.4" rx="0.7" fill="currentColor"/></svg></div>
+          <div class="afn" data-align="vcenter" title="垂直置中（上下置中對齊）"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M1.6 8H14.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="4" y="3" width="2.4" height="10" rx="0.7" fill="currentColor"/><rect x="9.6" y="5" width="2.4" height="6" rx="0.7" fill="currentColor"/></svg></div>
+          <div class="afn" data-align="bottom" title="靠下對齊（下邊對齊）"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M1.6 14H14.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="4" y="3.4" width="2.4" height="9" rx="0.7" fill="currentColor"/><rect x="9.6" y="7" width="2.4" height="5.4" rx="0.7" fill="currentColor"/></svg></div>
+          <div class="afn" data-dist="h" title="水平均分間距（左右等距，需 3 個以上）"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="1.8" y="3" width="2.2" height="10" rx="0.6" fill="currentColor"/><rect x="6.9" y="3" width="2.2" height="10" rx="0.6" fill="currentColor"/><rect x="12" y="3" width="2.2" height="10" rx="0.6" fill="currentColor"/></svg></div>
+          <div class="afn" data-dist="v" title="垂直均分間距（上下等距，需 3 個以上）"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="3" y="1.8" width="10" height="2.2" rx="0.6" fill="currentColor"/><rect x="3" y="6.9" width="10" height="2.2" rx="0.6" fill="currentColor"/><rect x="3" y="12" width="10" height="2.2" rx="0.6" fill="currentColor"/></svg></div>
+          <span class="lsep"></span><b style="color:var(--gold)">靠牆</b>
+          <div class="afn" data-wall="left" title="整組靠左牆（推到最近的左牆貼齊）"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="1.4" y="2" width="1.8" height="12" rx="0.4" fill="currentColor"/><rect x="3.9" y="4.8" width="6.4" height="6.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div>
+          <div class="afn" data-wall="top" title="整組靠上牆（推到最近的上牆貼齊）"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="2" y="1.4" width="12" height="1.8" rx="0.4" fill="currentColor"/><rect x="4.8" y="3.9" width="6.4" height="6.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div>
+          <div class="afn" data-wall="right" title="整組靠右牆（推到最近的右牆貼齊）"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="12.8" y="2" width="1.8" height="12" rx="0.4" fill="currentColor"/><rect x="5.7" y="4.8" width="6.4" height="6.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div>
+          <div class="afn" data-wall="bottom" title="整組靠下牆（推到最近的下牆貼齊）"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="2" y="12.8" width="12" height="1.8" rx="0.4" fill="currentColor"/><rect x="4.8" y="5.7" width="6.4" height="6.4" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div>
         </span>
       </div>
       <div id="scenPanel" style="display:none">
@@ -728,6 +748,46 @@ function groupFlip(axis){ const c=selCentroid(); if(!c)return; pushHistory(); co
     f.mirror=!f.mirror; });
   selWalls.forEach(i=>{ const w=plan.walls[i]; if(!w)return; if(axis==='h'){ w.x1=2*cx-w.x1; w.x2=2*cx-w.x2; } else { w.y1=2*cy-w.y1; w.y2=2*cy-w.y2; } });
   (selWalls.size?rebuild():rebuildFurn()); render2d(); }
+function selFurnBBox(){ let L=1e9,T=1e9,R=-1e9,B=-1e9,any=false;   // 只算「選到的家具」外框（給對齊/靠牆用、不含牆）
+  selFurn.forEach(i=>{ const f=plan.furn[i]; if(!f)return; const b=furnAABB(f); if(!b)return; any=true;
+    if(b.x0<L)L=b.x0; if(b.y0<T)T=b.y0; if(b.x1>R)R=b.x1; if(b.y1>B)B=b.y1; });
+  return any?{L,T,R,B,CX:(L+R)/2,CY:(T+B)/2}:null; }
+function alignFurn(mode){ if(selFurn.size<2)return; const bb=selFurnBBox(); if(!bb)return; pushHistory();   // 多選互相對齊：靠 左/右/上/下 邊 或 水平/垂直 置中
+  selFurn.forEach(i=>{ const f=plan.furn[i]; if(!f)return; const b=furnAABB(f); if(!b)return;
+    if(mode==='left') f.x+=bb.L-b.x0;
+    else if(mode==='right') f.x+=bb.R-b.x1;
+    else if(mode==='hcenter') f.x+=bb.CX-(b.x0+b.x1)/2;
+    else if(mode==='top') f.y+=bb.T-b.y0;
+    else if(mode==='bottom') f.y+=bb.B-b.y1;
+    else if(mode==='vcenter') f.y+=bb.CY-(b.y0+b.y1)/2; });
+  rebuildFurn(); render2d(); }
+function distributeFurn(axis){ if(selFurn.size<3)return;   // 間距均分：頭尾不動，中間等距
+  const arr=[...selFurn].map(i=>({i,b:furnAABB(plan.furn[i])})).filter(o=>o.b); if(arr.length<3)return; pushHistory();
+  if(axis==='h'){ arr.sort((a,b)=>(a.b.x0+a.b.x1)-(b.b.x0+b.b.x1));
+    const L=Math.min(...arr.map(o=>o.b.x0)), R=Math.max(...arr.map(o=>o.b.x1));
+    const tot=arr.reduce((s,o)=>s+(o.b.x1-o.b.x0),0), gap=(R-L-tot)/(arr.length-1);
+    let cur=L; arr.forEach(o=>{ const w=o.b.x1-o.b.x0, f=plan.furn[o.i]; f.x+=cur-o.b.x0; cur+=w+gap; }); }
+  else { arr.sort((a,b)=>(a.b.y0+a.b.y1)-(b.b.y0+b.b.y1));
+    const T=Math.min(...arr.map(o=>o.b.y0)), B=Math.max(...arr.map(o=>o.b.y1));
+    const tot=arr.reduce((s,o)=>s+(o.b.y1-o.b.y0),0), gap=(B-T-tot)/(arr.length-1);
+    let cur=T; arr.forEach(o=>{ const h=o.b.y1-o.b.y0, f=plan.furn[o.i]; f.y+=cur-o.b.y0; cur+=h+gap; }); }
+  rebuildFurn(); render2d(); }
+function snapGroupToWall(dir){ if(!selFurn.size)return; const bb=selFurnBBox(); if(!bb)return;   // 整組推到最近的牆貼齊（保持相對位置）
+  const t=(plan.wallT||0.12)/2; let target=null;
+  plan.walls.forEach(w=>{ const dx=w.x2-w.x1, dy=w.y2-w.y1, vert=Math.abs(dy)>=Math.abs(dx);
+    if(dir==='left'||dir==='right'){ if(!vert)return; const wx=(w.x1+w.x2)/2, y0=Math.min(w.y1,w.y2), y1=Math.max(w.y1,w.y2);
+      if(y1<bb.T-0.05||y0>bb.B+0.05)return;                                   // 牆要和這組在垂直方向有重疊才算
+      if(dir==='left'&&wx<=bb.L+0.05){ if(target==null||wx>target)target=wx; }
+      if(dir==='right'&&wx>=bb.R-0.05){ if(target==null||wx<target)target=wx; } }
+    else { if(vert)return; const wy=(w.y1+w.y2)/2, x0=Math.min(w.x1,w.x2), x1=Math.max(w.x1,w.x2);
+      if(x1<bb.L-0.05||x0>bb.R+0.05)return;
+      if(dir==='top'&&wy<=bb.T+0.05){ if(target==null||wy>target)target=wy; }
+      if(dir==='bottom'&&wy>=bb.B-0.05){ if(target==null||wy<target)target=wy; } } });
+  if(target==null){ const el=document.getElementById('hint'); if(el)el.textContent='那個方向附近沒有牆可以靠（要先在那側有牆、且和這組對得上）'; return; }
+  let ddx=0,ddy=0;
+  if(dir==='left') ddx=(target+t)-bb.L; else if(dir==='right') ddx=(target-t)-bb.R;
+  else if(dir==='top') ddy=(target+t)-bb.T; else if(dir==='bottom') ddy=(target-t)-bb.B;
+  pushHistory(); selFurn.forEach(i=>{ const f=plan.furn[i]; if(f){ f.x+=ddx; f.y+=ddy; } }); rebuildFurn(); render2d(); }
 function startGroupDrag(x,y){ pushHistory(); drag={kind:'furn',sx:x,sy:y,
   items:[...selFurn].map(i=>({i,ox:plan.furn[i].x,oy:plan.furn[i].y})),
   walls:[...selWalls].map(i=>({i,ax:plan.walls[i].x1,ay:plan.walls[i].y1,bx:plan.walls[i].x2,by:plan.walls[i].y2}))}; }
@@ -1800,6 +1860,8 @@ function updateFurnProp(){ const p=document.getElementById('furnProp'); if(!p) r
   p.style.display='flex';
   const single=document.getElementById('fpSingle'), group=document.getElementById('fpGroup');
   if(group) group.style.display=(sc>=2)?'inline-flex':'none';            // 2 件以上＝整組變換可用
+  const al=document.getElementById('fpAlign'); if(al){ al.style.display=(selFurn.size>=2)?'inline-flex':'none';   // 2 件以上家具＝對齊可用；均分需 3 件
+    al.querySelectorAll('[data-dist]').forEach(b=>b.classList.toggle('dis',selFurn.size<3)); }
   if(selFurn.size===0){ if(single)single.style.display='none'; return; } // 純選牆→只給整組
   if(single) single.style.display='inline-flex';
   if(/^fp(W|D|H|Color)$/.test((document.activeElement||{}).id)) return;   // 編輯中別覆寫輸入框
@@ -1831,6 +1893,9 @@ function updateFurnProp(){ const p=document.getElementById('furnProp'); if(!p) r
 { const b=document.getElementById('fpFlipV'); if(b) b.onclick=()=>groupFlip('v'); }
 { const b=document.getElementById('gpFlipH'); if(b) b.onclick=()=>groupFlip('h'); }
 { const b=document.getElementById('gpFlipV'); if(b) b.onclick=()=>groupFlip('v'); }
+document.querySelectorAll('#fpAlign [data-align]').forEach(b=>b.onclick=()=>alignFurn(b.dataset.align));
+document.querySelectorAll('#fpAlign [data-dist]').forEach(b=>b.onclick=()=>distributeFurn(b.dataset.dist));
+document.querySelectorAll('#fpAlign [data-wall]').forEach(b=>b.onclick=()=>snapGroupToWall(b.dataset.wall));
 
 document.getElementById('view3d').onclick=()=>{ setWalk(false); const b=lastBounds(); const s=Math.max(b.span,6);
   cam.position.set(b.cx - s*0.15, s*0.85, b.cz + s*1.05); orbit.target.set(b.cx,0.4,b.cz); orbit.update(); markView('view3d'); };
@@ -1970,6 +2035,7 @@ window.PLAN=()=>plan;
 window.__dbg={ plan:()=>plan, size:(w,h)=>{c2d.width=w;c2d.height=h;fitted=false;fit2d();fitted=true;render2d();}, snapTest:(fi,nx,ny)=>snapFurn(fi,nx,ny),
   seatPlan:(x1,y1,x2,y2)=>seatFillPlan({x1,y1,x2,y2}), seatFill:(x1,y1,x2,y2)=>seatFillApply({x1,y1,x2,y2}),
   guides:(fi)=>computeDragGuides(fi), aabb:(fi)=>furnAABB(plan.furn[fi]),
+  align:(m)=>alignFurn(m), distribute:(a)=>distributeFurn(a), snapWall:(d)=>snapGroupToWall(d), selFurnBBox:()=>selFurnBBox(),
   drawWall:(x1,y1,x2,y2)=>{pushHistory();plan.walls.push({x1,y1,x2,y2});rebuild();return plan.walls.length;},
   pack:(k)=>{currentPack=k;packSel.value=k;applyPack();rebuild();},
   loadPlan:(o)=>{ plan=Object.assign(emptyPlan(),o); document.getElementById('wallH').value=plan.wallH||2.8; clearSel(); fitted=false; fit2d(); fitted=true; rebuild(); },
