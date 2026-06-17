@@ -37,6 +37,13 @@
   .layerb{font-size:12px}
   .layerb.act{border-color:var(--gold);color:var(--gold)}
   .ofmore{border-color:var(--gold);color:var(--gold)}
+  .rail{position:absolute;left:8px;top:50%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;gap:3px;background:rgba(28,28,36,.96);border:1px solid var(--line);border-radius:13px;padding:6px;max-height:calc(100% - 16px);overflow-y:auto;box-shadow:0 8px 26px rgba(0,0,0,.45)}
+  .rail .rbtn{width:38px;height:38px;min-height:38px;display:flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer;padding:0}
+  .rail .rbtn:hover{background:var(--panel2);color:var(--text)}
+  .rail .rbtn.sel{background:#2a2616;border-color:var(--gold);color:var(--gold)}
+  .rail .rbtn svg{width:21px;height:21px;display:block}
+  .rsep{height:1px;background:var(--line);margin:3px 6px;flex:0 0 auto}
+  .topt{display:inline-flex;align-items:center;gap:6px}
   .ofmenu{position:fixed;z-index:50;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px;display:flex;flex-direction:column;gap:6px;box-shadow:0 12px 30px rgba(0,0,0,.55);min-width:150px;max-width:78vw}
   .ofmenu .tool{width:100%;text-align:left}
   .ofmenu .sep{display:none}
@@ -63,12 +70,12 @@
   #cwrap{flex:1;position:relative;overflow:hidden;background:#0e0e12}
   #c2d{position:absolute;inset:0;cursor:crosshair}
   #c3d{width:100%;height:100%;display:block}
-  .hint{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--muted);background:rgba(0,0,0,.5);padding:5px 9px;border-radius:7px;pointer-events:none}
+  .hint{position:absolute;left:60px;bottom:10px;font-size:12px;color:var(--muted);background:rgba(0,0,0,.5);padding:5px 9px;border-radius:7px;pointer-events:none;max-width:calc(100% - 130px)}
   .zoombar{position:absolute;right:12px;bottom:10px;display:flex;gap:5px;z-index:4}
   .zbtn{min-width:32px;height:30px;padding:0 9px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--line);background:rgba(28,28,36,.92);color:var(--text);cursor:pointer;font-size:16px;line-height:1;user-select:none}
   .zbtn:hover{border-color:var(--gold)}
   .zbtn .zlbl{font-size:12px}
-  #furnProp{position:absolute;left:12px;top:12px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:7px;background:rgba(28,28,36,.95);border:1px solid var(--line);border-radius:10px;padding:7px 11px;max-width:92%}
+  #furnProp{position:absolute;left:60px;top:12px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:7px;background:rgba(28,28,36,.95);border:1px solid var(--line);border-radius:10px;padding:7px 11px;max-width:calc(100% - 72px)}
   #furnProp b{color:var(--gold);font-size:13px;margin-right:2px}
   #furnProp label{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:3px}
   #furnProp input[type=number]{width:54px}
@@ -113,11 +120,7 @@
 <div class="wrap">
   <div class="left">
     <div class="tools">
-      <div class="tool sel" data-tool="wall">牆</div>
-      <div class="tool" data-tool="door">門</div>
-      <div class="tool" data-tool="window">窗</div>
-      <div class="tool" data-tool="furn">家具</div>
-      <div class="tool" id="furnPick" title="選家具種類（可搜尋）">工位 ▾</div>
+      <span id="optFurn" class="topt"><span class="fld" style="color:var(--muted)">家具種類</span><div class="tool" id="furnPick" title="選家具種類（可搜尋）">工位 ▾</div></span>
       <div id="furnPanel" class="pickpanel" style="display:none"></div>
       <select id="furnType" title="家具種類" style="display:none">
         <optgroup label="辦公">
@@ -162,20 +165,12 @@
           <option value="toilet">馬桶</option>
         </optgroup>
       </select>
-      <div class="tool" data-tool="tmpl">模板</div>
-      <select id="tmplType" title="座位／辦公室標準模板">
+      <span id="optTmpl" class="topt"><span class="fld" style="color:var(--muted)">模板</span><select id="tmplType" title="座位／辦公室標準模板">
         <option value="eng1">工程師-單座</option><option value="eng2">工程師-雙座</option>
         <option value="deputy">副理</option><option value="secretary">秘書</option><option value="manager">部經辦公室</option>
-      </select>
-      <div class="tool" data-tool="move">選取/移動</div>
-      <div class="grp"><div class="tool gbtn">工具 ▾</div><div class="gpop">
-        <div class="tool" data-tool="rail">欄杆</div>
-        <div class="tool" data-tool="seatfill" title="拖一個區域，自動排滿工位、4 個朝向選座位最多">排座</div>
-        <label class="fld">走道<input id="aisleW" type="number" value="1.2" step="0.1" min="0.6" max="3" style="width:48px"> m</label>
-        <div class="tool" data-tool="erase">刪除</div>
-        <div class="tool" data-tool="selwall">框選刪牆</div>
-        <div class="tool" data-tool="setlen">設牆長校正</div>
-      </div></div>
+      </select></span>
+      <span id="optSeat" class="topt"><label class="fld" title="排座工具的走道寬度">走道<input id="aisleW" type="number" value="1.2" step="0.1" min="0.6" max="3" style="width:48px"> m</label></span>
+      <span id="optHint" class="fld" style="color:var(--muted)">← 左側選工具</span>
       <span class="lsep"></span>
       <div class="tool layerb act" data-layer="all" title="全部可編輯">▦ 全部</div>
       <div class="tool layerb" data-layer="struct" title="只編輯牆+柱（家具鎖住變淡）— 先把牆做好">▦ 結構</div>
@@ -225,6 +220,22 @@
       <div class="tool" id="ulClear">清除底圖</div>
     </div>
     <div id="cwrap"><canvas id="c2d"></canvas>
+      <div class="rail" id="rail">
+        <div class="tool rbtn sel" data-tool="wall" title="牆"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="1"/><path d="M3.5 12h17M10 6v6M16 6v6M7 12v6M13 12v6"/></svg></div>
+        <div class="tool rbtn" data-tool="door" title="門"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 20h12"/><path d="M9 20V6l7-2v16"/><circle cx="13.6" cy="12" r="0.9" fill="currentColor" stroke="none"/></svg></div>
+        <div class="tool rbtn" data-tool="window" title="窗"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M12 4v16M4 12h16"/></svg></div>
+        <div class="tool rbtn" data-tool="rail" title="欄杆"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18M3 11h18M6.5 11v7M12 11v7M17.5 11v7"/></svg></div>
+        <div class="rsep"></div>
+        <div class="tool rbtn" data-tool="furn" title="家具"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><rect x="5" y="11" width="14" height="6" rx="1"/><path d="M5 13H3.2M19 13h1.8M7 17v2M17 17v2"/></svg></div>
+        <div class="tool rbtn" data-tool="tmpl" title="模板"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg></div>
+        <div class="rsep"></div>
+        <div class="tool rbtn" data-tool="move" title="選取／移動"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3 L5 18 L9.2 13.8 L12 20 L14.2 19 L11.4 13 L17 13 Z" fill="currentColor"/></svg></div>
+        <div class="tool rbtn" data-tool="erase" title="刪除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M10 11v6M14 11v6"/></svg></div>
+        <div class="rsep"></div>
+        <div class="tool rbtn" data-tool="seatfill" title="排座（拖一個區域自動排滿工位）"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><g fill="currentColor"><rect x="6" y="6" width="4" height="4" rx="0.6"/><rect x="14" y="6" width="4" height="4" rx="0.6"/><rect x="6" y="14" width="4" height="4" rx="0.6"/><rect x="14" y="14" width="4" height="4" rx="0.6"/></g></svg></div>
+        <div class="tool rbtn" data-tool="selwall" title="框選刪牆"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-dasharray="3 2.6" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1.5"/></svg></div>
+        <div class="tool rbtn" data-tool="setlen" title="設牆長校正"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="8" rx="1"/><path d="M7 8v3.5M11 8v4.5M15 8v3.5"/></svg></div>
+      </div>
       <div id="furnProp" style="display:none">
         <span id="fpSingle" style="display:inline-flex;align-items:center;gap:7px">
           <b id="fpLabel">家具</b>
@@ -1126,6 +1137,7 @@ window.addEventListener('keyup',e=>{ if(e.code==='Space') spaceDown=false; keys[
 document.querySelectorAll('.tool[data-tool]').forEach(t=>t.onclick=()=>{ tool=t.dataset.tool; pending=null; selFurn.clear(); selWalls.clear(); selDrag=null; furnDrag=null; seatDrag=null;
   setUl(false);
   document.querySelectorAll('.tool[data-tool]').forEach(x=>x.classList.toggle('sel',x===t));
+  updateToolOpts();
   const H={wall:'牆：點起點→點終點（按住 Shift＝直角鎖、畫筆直橫/直牆；會接續，Esc 結束）',door:'門：點在某面牆上加門洞',window:'窗：點在某面牆上加窗',
     rail:'欄杆：點起點→點終點，畫出矮欄杆（開放陽台/露台邊用）',
     furn:'家具：選種類點一下放上去（數字 1~9 切工具）',move:'選取/移動：點或框選家具(可多選)→拖曳移動、R 轉向、Ctrl+C 複製→滑鼠移到位 Ctrl+V 蓋章(可連蓋)、Ctrl+D 原地複製、Delete 刪除',erase:'刪除：點牆/門窗/家具移除',
@@ -1133,7 +1145,10 @@ document.querySelectorAll('.tool[data-tool]').forEach(t=>t.onclick=()=>{ tool=t.
     tmpl:'模板：選一種標準配置點一下放上去（工程師＝家具組；副理/秘書/部經＝含牆+門整間），放完已全選可整組拖動微調',
     seatfill:'排座：拖一個矩形區域→自動排滿工位（模板用旁邊下拉的單座/雙座、自動轉 4 個朝向選座位最多）、避開既有牆和家具；走道寬用「走道」欄調，Ctrl+Z 復原'};
   document.getElementById('hint').textContent=H[tool]; render2d(); });
-document.querySelectorAll('.tool[data-tool]').forEach(t=>{ const k=Object.keys(TOOLKEYS).find(kk=>TOOLKEYS[kk]===t.dataset.tool); if(k) t.title='快捷鍵 '+k; });
+document.querySelectorAll('.tool[data-tool]').forEach(t=>{ const k=Object.keys(TOOLKEYS).find(kk=>TOOLKEYS[kk]===t.dataset.tool); if(k) t.title=(t.title||t.dataset.tool)+'（快捷鍵 '+k+'）'; });
+function updateToolOpts(){ const so=(id,on)=>{ const e=document.getElementById(id); if(e) e.style.display=on?'inline-flex':'none'; };   // 工具選項只在對應工具啟用時顯示（家具種類/模板/走道），其餘只剩圖層＋選單
+  so('optFurn',tool==='furn'); so('optTmpl',tool==='tmpl'); so('optSeat',tool==='seatfill'); so('optHint',!['furn','tmpl','seatfill'].includes(tool)); }
+updateToolOpts();
 const wallHEl=document.getElementById('wallH');
 document.getElementById('undo').onclick=undo;
 document.getElementById('clear').onclick=()=>{pushHistory();plan=emptyPlan();plan.wallH=parseFloat(wallHEl.value)||2.8;clearSel();rebuild();};
