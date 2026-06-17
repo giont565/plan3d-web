@@ -176,6 +176,8 @@
       <div class="tool layerb act" data-layer="all" title="全部可編輯">▦ 全部</div>
       <div class="tool layerb" data-layer="struct" title="只編輯牆+柱（家具鎖住變淡）— 先把牆做好">▦ 結構</div>
       <div class="tool layerb" data-layer="furn" title="只編輯家具（牆+柱鎖住變淡）— 不會誤動做好的牆">▦ 家具</div>
+      <div class="tool structadd" id="addCol" style="display:none;border-color:var(--gold)" title="放結構柱：點一下這裡再點圖上要放的位置">＋柱</div>
+      <div class="tool structadd" id="addStair" style="display:none;border-color:var(--gold)" title="放樓梯：點一下這裡再點圖上要放的位置">＋樓梯</div>
       <span class="lsep"></span>
       <div class="grp"><div class="tool gbtn">分析 ▾</div><div class="gpop">
         <div class="tool" id="roomBtn" title="自動認出每個房間：算面積、畫「圓圈＋連線」看哪些房間有門相通；沒有門進得去的房間標紅">房間分析</div>
@@ -210,6 +212,11 @@
       <label class="fld" style="cursor:pointer"><input type="checkbox" id="ulPlaus" checked> 濾假牆(合理性)</label>
       <div class="tool pin" id="ulAuto" style="border-color:var(--gold);color:var(--gold);font-weight:700">⚙ 自動描牆</div>
       <div class="tool pin" id="ulFurn" style="border-color:var(--gold);color:var(--gold);font-weight:700" title="自動認出平面圖上的工位桌組並放成家具（要先校正比例）">⚙ 自動家具</div>
+      <span class="fld" style="gap:7px" title="勾選自動家具要放置的項目—椅子最不準，可只放桌+柱避免雜訊">放置：
+        <label style="cursor:pointer;gap:2px"><input type="checkbox" id="detDesk" checked>桌</label>
+        <label style="cursor:pointer;gap:2px"><input type="checkbox" id="detChair" checked>椅</label>
+        <label style="cursor:pointer;gap:2px"><input type="checkbox" id="detCol" checked>柱</label>
+        <label style="cursor:pointer;gap:2px"><input type="checkbox" id="detStair" checked>樓梯</label></span>
       <div class="tool" id="ulGt" title="把你修正後的桌/椅/柱存成訓練標注（修正即標注），並給機器這次的辨識打分">回饋標注</div>
       <div class="tool" id="ulClear">清除底圖</div>
     </div>
@@ -752,19 +759,19 @@ function render2d(){ const w=c2d.width,h=c2d.height; ctx.clearRect(0,0,w,h);
     if(A){ const [aox,aoy]=W2S(A.minx,A.miny), sw=A.gw*A.cell*view.ppm, sh=A.gh*A.cell*view.ppm;
       if(showLight) ctx.drawImage(lightCv(A),aox,aoy,sw,sh);
       if(showRooms) ctx.drawImage(roomCv(A),aox,aoy,sw,sh); } }
-  ctx.globalAlpha=wallLocked()?0.28:1;                                    // 家具層時牆/柱/開口淡化（鎖住示意）
+  const _wlk=wallLocked(); ctx.globalAlpha=_wlk?0.18:1;                    // 家具層時牆/柱/開口＝灰幽靈（鎖住、明確區分）
   for(const wl of plan.walls){ const [ax,ay]=W2S(wl.x1,wl.y1),[bx,by]=W2S(wl.x2,wl.y2);
-    if(wl.h!=null){ ctx.strokeStyle='#c9a35b';ctx.lineWidth=3;ctx.setLineDash([7,4]); }
-    else { ctx.strokeStyle='#cfcfe0';ctx.lineWidth=Math.max(4,plan.wallT*view.ppm);ctx.setLineDash([]); }
+    if(wl.h!=null){ ctx.strokeStyle=_wlk?'#56564e':'#c9a35b';ctx.lineWidth=3;ctx.setLineDash([7,4]); }
+    else { ctx.strokeStyle=_wlk?'#666670':'#cfcfe0';ctx.lineWidth=Math.max(4,plan.wallT*view.ppm);ctx.setLineDash([]); }
     ctx.lineCap='round';ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke(); }
   ctx.setLineDash([]);
   for(const o of plan.openings){ const [px,py]=W2S(o.x,o.y);
-    ctx.fillStyle=o.type==='door'?'#e0b15a':'#5ec8e0'; ctx.beginPath();ctx.arc(px,py,6,0,7);ctx.fill(); }
+    ctx.fillStyle=_wlk?'#5a5a62':(o.type==='door'?'#e0b15a':'#5ec8e0'); ctx.beginPath();ctx.arc(px,py,6,0,7);ctx.fill(); }
   ctx.globalAlpha=1;
   plan.furn.forEach((f,i)=>{ const F=effFurn(f); if(!F)return; const [px,py]=W2S(f.x,f.y);
-    ctx.save();ctx.globalAlpha=furnLocked(f)?0.3:1;ctx.translate(px,py);ctx.rotate(f.rot||0);
-    ctx.fillStyle='#'+F.c.toString(16).padStart(6,'0')+'cc';
-    ctx.strokeStyle=selFurn.has(i)?'#c9a35b':'#00000066'; ctx.lineWidth=selFurn.has(i)?3:1.5; ctx.lineJoin='round';
+    const _flk=furnLocked(f); ctx.save();ctx.globalAlpha=_flk?0.2:1;ctx.translate(px,py);ctx.rotate(f.rot||0);   // 鎖住層＝灰幽靈
+    ctx.fillStyle=_flk?'#5c5c64cc':('#'+F.c.toString(16).padStart(6,'0')+'cc');
+    ctx.strokeStyle=selFurn.has(i)?'#c9a35b':(_flk?'#00000022':'#00000066'); ctx.lineWidth=selFurn.has(i)?3:1.5; ctx.lineJoin='round';
     ctx.save(); if(f.mirror) ctx.scale(-1,1); const lp=furnPath2D(ctx,f,F); ctx.fill(); ctx.stroke();
     if(f.type==='stair'){ const hw=F.w*view.ppm/2, hd=F.d*view.ppm/2, n=Math.max(5,Math.round(F.d/0.28));   // 樓梯：踏面橫線 + 上行箭頭
       ctx.strokeStyle='#00000077'; ctx.lineWidth=1;
@@ -1221,10 +1228,11 @@ async function autoFurn(){   // 自動認工位家具：同 autoTrace 的裁切/
     if(r.error) throw new Error(r.error);
     if(!r.desks.length){ document.getElementById('hint').textContent='自動家具：這個範圍沒認出工位。先確認比例已校正（工位桌寬約 1.2~1.4m 才認得出），或用「框選範圍」框住工位區再按一次'; return; }
     pushHistory();
-    r.desks.forEach(d=>{ plan.furn.push({type:'desk', x:ox+(cx0+d[0])*sx, y:oy+(cy0+d[1])*sx, w:d[2], d:d[3], rot:d[4]*Math.PI/180}); });
-    (r.cols||[]).forEach(c=>{ plan.furn.push({type:'column', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx, w:c[2], d:c[3]}); });
-    (r.stairs||[]).forEach(c=>{ plan.furn.push({type:'stair', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx, w:c[2], d:c[3]}); });
-    (r.chairs||[]).forEach(c=>{ plan.furn.push({type:'schair', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx}); });
+    const want=(id)=>{ const e=document.getElementById(id); return !e||e.checked; };   // 辨識項目勾選：只放勾的、避免不準的雜訊
+    if(want('detDesk')) r.desks.forEach(d=>{ plan.furn.push({type:'desk', x:ox+(cx0+d[0])*sx, y:oy+(cy0+d[1])*sx, w:d[2], d:d[3], rot:d[4]*Math.PI/180}); });
+    if(want('detCol')) (r.cols||[]).forEach(c=>{ plan.furn.push({type:'column', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx, w:c[2], d:c[3]}); });
+    if(want('detStair')) (r.stairs||[]).forEach(c=>{ plan.furn.push({type:'stair', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx, w:c[2], d:c[3]}); });
+    if(want('detChair')) (r.chairs||[]).forEach(c=>{ plan.furn.push({type:'schair', x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx}); });
     window.__lastDetect={ mpp:sx,   // 機器原始輸出(世界座標·公尺尺寸)→「回饋標注」時跟修正後真值比對打分
       desk:r.desks.map(d=>({x:ox+(cx0+d[0])*sx, y:oy+(cy0+d[1])*sx, w:d[2], h:d[3]})),
       chair:(r.chairs||[]).map(c=>({x:ox+(cx0+c[0])*sx, y:oy+(cy0+c[1])*sx, w:0.5, h:0.5})),
@@ -1280,8 +1288,15 @@ document.querySelectorAll('.tool[data-layer]').forEach(b=>b.onclick=()=>{ active
   if(activeLayer!=='all'){ [...selFurn].forEach(i=>{ if(furnLocked(plan.furn[i])) selFurn.delete(i); }); }   // 切層清掉鎖住的選取
   if(wallLocked()) selWalls.clear();
   editDrag=null;
-  const H={all:'圖層：全部可編輯（牆/柱/家具）',struct:'圖層→結構：只編輯牆＋柱，家具鎖住變淡（先把牆做好）',furn:'圖層→家具：只編輯家具，牆＋柱鎖住變淡（放家具不會誤動做好的牆）'};
+  document.querySelectorAll('.structadd').forEach(x=>x.style.display=(activeLayer==='struct')?'':'none');   // 結構層才顯 ＋柱/＋樓梯
+  const H={all:'圖層：全部可編輯（牆/柱/家具）',struct:'圖層→結構：編輯牆＋柱＋樓梯，家具鎖成灰幽靈。要放柱/樓梯按右邊「＋柱」「＋樓梯」',furn:'圖層→家具：只編輯家具，牆＋柱＋樓梯鎖成灰幽靈（放家具不會誤動結構）'};
   document.getElementById('hint').textContent=H[activeLayer]; render2d(); });
+function placeStructTool(type){ const sel=document.getElementById('furnType'); sel.value=type;   // ＋柱/＋樓梯：設型別+進放置模式
+  const fp=document.getElementById('furnPick'); if(fp){ const o=sel.options[sel.selectedIndex]; fp.textContent=(o?o.textContent:type)+' ▾'; }
+  const fb=document.querySelector('.tool[data-tool="furn"]'); if(fb)fb.click();
+  document.getElementById('hint').textContent=(type==='column'?'放柱':'放樓梯')+'：點圖上要放的位置（在結構層、不會誤動家具）'; }
+document.getElementById('addCol').onclick=()=>placeStructTool('column');
+document.getElementById('addStair').onclick=()=>placeStructTool('stair');
 pdfBackendAlive().then(ok=>{ if(!ok){ ['ulAuto','ulFurn','ulGt'].forEach(id=>{ const b=document.getElementById(id);   // 純網頁版：辨識鈕變灰示意(點了有完整說明)
   if(b){ b.style.opacity=.35; b.title='網頁版沒有辨識後端：請用本機版(8808)或 Render 雲端版'; } }); } });
 function doCalib(){ const [p1,p2]=ulCalib.pts; const d=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]);
