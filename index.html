@@ -44,6 +44,10 @@
   .rail .rbtn svg{width:21px;height:21px;display:block}
   .rsep{height:1px;background:var(--line);margin:3px 6px;flex:0 0 auto}
   .topt{display:inline-flex;align-items:center;gap:6px}
+  .rlayer{display:flex;flex-direction:column;gap:3px}
+  .rail .layerb{padding:5px 2px;font-size:12px;text-align:center;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--muted);min-height:0;height:auto;line-height:1.15}
+  .rail .layerb.act{border-color:var(--gold);color:var(--gold);background:#2a2616}
+  .rail .structadd{padding:5px 2px;font-size:11px;text-align:center;border:1px solid var(--gold);border-radius:7px;background:transparent;color:var(--gold);cursor:pointer;min-height:0;height:auto;line-height:1.15}
   .ofmenu{position:fixed;z-index:50;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px;display:flex;flex-direction:column;gap:6px;box-shadow:0 12px 30px rgba(0,0,0,.55);min-width:150px;max-width:78vw}
   .ofmenu .tool{width:100%;text-align:left}
   .ofmenu .sep{display:none}
@@ -172,12 +176,6 @@
       <span id="optSeat" class="topt"><label class="fld" title="排座工具的走道寬度">走道<input id="aisleW" type="number" value="1.2" step="0.1" min="0.6" max="3" style="width:48px"> m</label></span>
       <span id="optHint" class="fld" style="color:var(--muted)">← 左側選工具</span>
       <span class="lsep"></span>
-      <div class="tool layerb act" data-layer="all" title="全部可編輯">▦ 全部</div>
-      <div class="tool layerb" data-layer="struct" title="只編輯牆+柱（家具鎖住變淡）— 先把牆做好">▦ 結構</div>
-      <div class="tool layerb" data-layer="furn" title="只編輯家具（牆+柱鎖住變淡）— 不會誤動做好的牆">▦ 家具</div>
-      <div class="tool structadd" id="addCol" style="display:none;border-color:var(--gold)" title="放結構柱：點一下這裡再點圖上要放的位置">＋柱</div>
-      <div class="tool structadd" id="addStair" style="display:none;border-color:var(--gold)" title="放樓梯：點一下這裡再點圖上要放的位置">＋樓梯</div>
-      <span class="lsep"></span>
       <div class="grp"><div class="tool gbtn">分析 ▾</div><div class="gpop">
         <div class="tool" id="roomBtn" title="自動認出每個房間：算面積、畫「圓圈＋連線」看哪些房間有門相通；沒有門進得去的房間標紅">房間分析</div>
         <div class="tool" id="lightBtn" title="依窗戶位置估算室內採光，疊上熱圖：亮黃＝光線好、深藍＝最暗（簡化估算、輔助比較用）">採光</div>
@@ -221,6 +219,14 @@
     </div>
     <div id="cwrap"><canvas id="c2d"></canvas>
       <div class="rail" id="rail">
+        <div class="rlayer" title="圖層：要編輯哪一層">
+          <div class="tool layerb act" data-layer="all" title="全部可編輯">全部</div>
+          <div class="tool layerb" data-layer="struct" title="只編輯結構（牆＋柱），家具鎖住變淡">結構</div>
+          <div class="tool layerb" data-layer="furn" title="只編輯家具，牆／柱鎖住變淡">家具</div>
+        </div>
+        <div class="tool structadd" id="addCol" style="display:none" title="放結構柱：點一下再點圖上位置">＋柱</div>
+        <div class="tool structadd" id="addStair" style="display:none" title="放樓梯：點一下再點圖上位置">＋梯</div>
+        <div class="rsep"></div>
         <div class="tool rbtn sel" data-tool="wall" title="牆"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="17" height="12" rx="1"/><path d="M3.5 12h17M10 6v6M16 6v6M7 12v6M13 12v6"/></svg></div>
         <div class="tool rbtn" data-tool="door" title="門"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 20h12"/><path d="M9 20V6l7-2v16"/><circle cx="13.6" cy="12" r="0.9" fill="currentColor" stroke="none"/></svg></div>
         <div class="tool rbtn" data-tool="window" title="窗"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M12 4v16M4 12h16"/></svg></div>
@@ -1407,7 +1413,7 @@ document.querySelectorAll('.tool[data-layer]').forEach(b=>b.onclick=()=>{ active
   if(wallLocked()) selWalls.clear();
   editDrag=null;
   document.querySelectorAll('.structadd').forEach(x=>x.style.display=(activeLayer==='struct')?'':'none');   // 結構層才顯 ＋柱/＋樓梯
-  const H={all:'圖層：全部可編輯（牆/柱/家具）',struct:'圖層→結構：編輯牆＋柱＋樓梯，家具鎖成灰幽靈。要放柱/樓梯按右邊「＋柱」「＋樓梯」',furn:'圖層→家具：只編輯家具，牆＋柱＋樓梯鎖成灰幽靈（放家具不會誤動結構）'};
+  const H={all:'圖層：全部可編輯（牆/柱/家具）',struct:'圖層→結構：編輯牆＋柱＋樓梯，家具鎖成灰幽靈。要放柱/樓梯按左側工具列上方的「＋柱」「＋梯」',furn:'圖層→家具：只編輯家具，牆＋柱＋樓梯鎖成灰幽靈（放家具不會誤動結構）'};
   document.getElementById('hint').textContent=H[activeLayer]; render2d(); });
 function placeStructTool(type){ const sel=document.getElementById('furnType'); sel.value=type;   // ＋柱/＋樓梯：設型別+進放置模式
   const fp=document.getElementById('furnPick'); if(fp){ const o=sel.options[sel.selectedIndex]; fp.textContent=(o?o.textContent:type)+' ▾'; }
