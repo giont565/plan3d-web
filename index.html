@@ -919,12 +919,12 @@ function render2d(){ const w=c2d.width,h=c2d.height; ctx.clearRect(0,0,w,h);
         editHandles.push({kind:'grot',sx:tcx,sy:rhy});
         [[L,T],[Rr,T],[Rr,B],[L,B]].forEach(pp=>{ editHandles.push({kind:'gscale',sx:pp[0],sy:pp[1]});
           ctx.fillStyle='#5ec8e0';ctx.strokeStyle='#1a1c20';ctx.lineWidth=1.5;ctx.beginPath();ctx.rect(pp[0]-5,pp[1]-5,10,10);ctx.fill();ctx.stroke(); }); } }
-    else if(selFurn.size===1&&selWalls.size===0){ const i=[...selFurn][0]; const f=plan.furn[i];   // 單件家具/柱：4 角拖拉改寬深
+    else if(selFurn.size===1&&selWalls.size===0){ const i=[...selFurn][0]; const f=plan.furn[i];   // 單件家具/柱：4 角＋4 邊拖拉改寬深（固定對邊、只動拖的那邊）
       if(f&&!furnLocked(f)){ const F=effFurn(f); const c=Math.cos(f.rot||0),s=Math.sin(f.rot||0);
-        [[-1,-1],[1,-1],[1,1],[-1,1]].forEach((sg,cn)=>{ const lx=sg[0]*F.w/2, ly=sg[1]*F.d/2;
-          const wx=f.x+lx*c-ly*s, wy=f.y+lx*s+ly*c; const [hx,hy]=W2S(wx,wy);
-          editHandles.push({kind:'fcorner',i,cn,sx:hx,sy:hy});
-          ctx.fillStyle='#c9a35b';ctx.strokeStyle='#1a1c20';ctx.lineWidth=1.5;ctx.beginPath();ctx.rect(hx-5,hy-5,10,10);ctx.fill();ctx.stroke(); }); } }
+        [[-1,-1],[1,-1],[1,1],[-1,1],[1,0],[-1,0],[0,1],[0,-1]].forEach(sg=>{ const ex=sg[0],ey=sg[1]; const lx=ex*F.w/2, ly=ey*F.d/2;
+          const wx=f.x+lx*c-ly*s, wy=f.y+lx*s+ly*c; const [hx,hy]=W2S(wx,wy); const r=(ex&&ey)?5:4;
+          editHandles.push({kind:'fcorner',i,ex,ey,sx:hx,sy:hy});
+          ctx.fillStyle='#c9a35b';ctx.strokeStyle='#1a1c20';ctx.lineWidth=1.5;ctx.beginPath();ctx.rect(hx-r,hy-r,r*2,r*2);ctx.fill();ctx.stroke(); }); } }
     else if(selWalls.size===1&&selFurn.size===0&&!wallLocked()){ const i=[...selWalls][0]; const wl=plan.walls[i];  // 單面牆：兩端點
       if(wl){ [[wl.x1,wl.y1,1],[wl.x2,wl.y2,2]].forEach(pt=>{ const [hx,hy]=W2S(pt[0],pt[1]);
         editHandles.push({kind:'wend',i,end:pt[2],sx:hx,sy:hy});
@@ -1044,7 +1044,9 @@ c2d.addEventListener('mousedown',e=>{
     if(hit){ pushHistory();
       if(hit.kind==='grot'){ const c=selCentroid(); editDrag={kind:'grotate',cx:c[0],cy:c[1],prev:Math.atan2(y-c[1],x-c[0])}; }
       else if(hit.kind==='gscale'){ const c=selCentroid(); editDrag={kind:'gscale',cx:c[0],cy:c[1],prev:Math.max(1e-3,Math.hypot(x-c[0],y-c[1]))}; }
-      else if(hit.kind==='fcorner'){ editDrag={kind:'resize',i:hit.i}; }
+      else if(hit.kind==='fcorner'){ const f=plan.furn[hit.i], F=effFurn(f), th=f.rot||0, cc=Math.cos(th), ss=Math.sin(th), ex=hit.ex, ey=hit.ey;
+        const ax=f.x+(-ex)*(F.w/2)*cc-(-ey)*(F.d/2)*ss, ay=f.y+(-ex)*(F.w/2)*ss+(-ey)*(F.d/2)*cc;   // 對邊/對角＝錨點(固定不動)
+        editDrag={kind:'resize',i:hit.i,ex,ey,ax,ay,w0:F.w,d0:F.d}; }
       else { editDrag={kind:'wallpt',i:hit.i,end:hit.end}; }
       return; }
     const fi=furnAt(x,y);
@@ -1073,9 +1075,11 @@ c2d.addEventListener('mousedown',e=>{
 });
 window.addEventListener('mousemove',e=>{ const [x,y]=evtW(e); mouseW=[x,y];
   if(editDrag){
-    if(editDrag.kind==='resize'){ const f=plan.furn[editDrag.i]; if(f){ const c=Math.cos(-(f.rot||0)),s=Math.sin(-(f.rot||0));
-      const lx=(x-f.x)*c-(y-f.y)*s, ly=(x-f.x)*s+(y-f.y)*c;
-      f.w=+Math.max(0.1,Math.abs(lx)*2).toFixed(3); f.d=+Math.max(0.1,Math.abs(ly)*2).toFixed(3); } }
+    if(editDrag.kind==='resize'){ const f=plan.furn[editDrag.i]; if(f){ const th=f.rot||0, ux=Math.cos(th), uy=Math.sin(th), vx=-Math.sin(th), vy=Math.cos(th);
+      const ex=editDrag.ex, ey=editDrag.ey, dx=x-editDrag.ax, dy=y-editDrag.ay; let w=editDrag.w0, d=editDrag.d0;   // 錨點固定，沿被拖的軸量到滑鼠＝新尺寸
+      if(ex){ w=Math.max(0.1,(dx*ux+dy*uy)*ex); } if(ey){ d=Math.max(0.1,(dx*vx+dy*vy)*ey); }
+      f.w=+w.toFixed(3); f.d=+d.toFixed(3);
+      const wl=ex*w/2, dl=ey*d/2; f.x=editDrag.ax+wl*ux+dl*vx; f.y=editDrag.ay+wl*uy+dl*vy; } }   // 中心由錨點＋半尺寸推回→對邊不動
     else if(editDrag.kind==='wallpt'){ const wl=plan.walls[editDrag.i]; if(wl){ let nx=snap(x),ny=snap(y);
       if(e.shiftKey){ const ax=editDrag.end===1?wl.x2:wl.x1, ay=editDrag.end===1?wl.y2:wl.y1; const o=orthoLock(ax,ay,nx,ny); nx=o[0];ny=o[1]; }
       if(editDrag.end===1){wl.x1=nx;wl.y1=ny;} else {wl.x2=nx;wl.y2=ny;} } }
@@ -2098,7 +2102,7 @@ window.__dbg={ plan:()=>plan, size:(w,h)=>{c2d.width=w;c2d.height=h;fitted=false
   selWallSet:(arr)=>{ selWalls=new Set(arr); render2d(); return [...selWalls]; },
   groupRotate:(d)=>groupRotateDeg(d), groupScale:(f)=>groupScaleFac(f), groupFlip:(a)=>groupFlip(a), selCentroid:()=>selCentroid(), selBBox:()=>selBBox(), selCount:()=>selFurn.size+selWalls.size,
   handles:()=>editHandles.map(h=>({kind:h.kind,sx:Math.round(h.sx),sy:Math.round(h.sy)})),
-  editDragStart:(kind,i,end)=>{ editDrag=(kind==='resize')?{kind:'resize',i}:{kind:'wallpt',i,end}; return editDrag; },
+  editDragStart:(kind,i,end)=>{ if(kind==='resize'){ const f=plan.furn[i],F=effFurn(f),th=f.rot||0,c=Math.cos(th),s=Math.sin(th),ex=1,ey=1; const ax=f.x+(-ex)*(F.w/2)*c-(-ey)*(F.d/2)*s, ay=f.y+(-ex)*(F.w/2)*s+(-ey)*(F.d/2)*c; editDrag={kind:'resize',i,ex,ey,ax,ay,w0:F.w,d0:F.d}; } else editDrag={kind:'wallpt',i,end}; return editDrag; },
   furnAt:(x,y)=>furnAt(x,y), clip:()=>furnClip,
   furnTest:()=>autoFurn(),
   rooms:()=>{ const A=analyzeRooms(); return A?{n:A.rooms.length,rooms:A.rooms.map((r,i)=>({i,area:+r.area.toFixed(2),doors:r.doors,reach:r.reach})),edges:A.edges.map(e=>[e.a,e.b])}:null; },
